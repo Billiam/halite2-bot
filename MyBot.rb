@@ -31,11 +31,8 @@ while true
 
   # For each ship we control
   map.me.ships.each do |ship|
-    # if the ship is docked
-    if ship.docking_status != Ship::DockingStatus::UNDOCKED
-      # skip this ship
-      next
-    end
+    # skip if the ship is docked
+    next if ship.docked?
 
     # For each planet in the game (only non-destroyed planets are included)
     map.planets.each do |planet|

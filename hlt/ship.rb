@@ -34,6 +34,10 @@ class Ship < Entity
     @planet = planet if @docking_status != DockingStatus::UNDOCKED
   end
 
+  def docked?
+    docking_status != Ship::DockingStatus::UNDOCKED
+  end
+
   # Generate a command to accelerate this ship.
   # magnitude: The speed through which to move the ship
   # angle: The angle to move the ship in. Should always be a positive number, but %360 fixes that.
