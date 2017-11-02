@@ -86,6 +86,7 @@ class Map
     entities = []
     entities.concat(planets) unless ignore.include?(:planets)
     entities.concat(ships) unless ignore.include?(:ships)
+    entities.concat(me.ships) if !ignore.include?(:my_ships) && ignore.include?(:ships)
 
     entities.each do |foreign_entity|
       next if foreign_entity == ship || foreign_entity == target
@@ -94,6 +95,22 @@ class Map
       end
     end
     obstacles
+  end
+
+  def any_obstacles_between?(ship, target, ignore=[])
+    entities = []
+    entities.concat(planets) unless ignore.include?(:planets)
+    entities.concat(ships) unless ignore.include?(:ships)
+    entities.concat(me.ships) if !ignore.include?(:my_ships) && ignore.include?(:ships)
+
+    entities.each do |foreign_entity|
+      next if foreign_entity == ship || foreign_entity == target
+      if intersect_segment_circle(ship, target, foreign_entity, fudge=ship.radius + 0.1)
+        return true
+      end
+    end
+
+    false
   end
 
   private

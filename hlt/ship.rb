@@ -91,7 +91,7 @@ class Ship < Entity
   # return: The command trying to be passed to the Halite engine or nil if
   #         movement is not possible within max_corrections degrees.
   def navigate(target, map, speed, avoid_obstacles: true, max_corrections: 90,
-              angular_step: 1, ignore_ships: false, ignore_planets: false)
+              angular_step: 1, ignore_ships: false, ignore_planets: false, ignore_my_ships: false)
     return if max_corrections <= 0
     distance = calculate_distance_between(target)
     angle = calculate_angle_between(target)
@@ -99,8 +99,9 @@ class Ship < Entity
     ignore = []
     ignore << :ships if ignore_ships
     ignore << :planets if ignore_planets
+    ignore << :my_ships if ignore_my_ships
 
-    if avoid_obstacles && map.obstacles_between(self, target, ignore).length > 0
+    if avoid_obstacles && map.any_obstacles_between?(self, target, ignore)
       delta_radians = (angle + angular_step)/180 * Math::PI
       new_target_dx = Math.cos(delta_radians) * distance
       new_target_dy = Math.sin(delta_radians) * distance
