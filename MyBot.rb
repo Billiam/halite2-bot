@@ -34,15 +34,12 @@ while true
     # skip if the ship is docked
     next if ship.docked?
 
-    # For each planet in the game (only non-destroyed planets are included)
-    map.planets.each do |planet|
-      # If the planet is owned
-      if planet.owned?
-        next
-      end
+    nearby_entities = map.nearby_entities_by_distance(ship)
+    planets_by_distance = nearby_entities.sort.map {|_dist, list| list.select {|entity| entity.is_a? Planet }}.flatten
 
-      # If we can dock, let's (try to) dock. If two enemy ships try to dock at
-      # once, neither will be able to.
+    planets_by_distance.each do |planet|
+      next if planet.owned?
+
       if ship.can_dock?(planet)
         command_queue << ship.dock(planet)
       else
@@ -59,8 +56,8 @@ while true
         # As your skill progresses and your moves turn more optimal you may
         # wish to turn that option off.
         closest = ship.closest_point_to(planet)
-        speed = Game::Constants::MAX_SPEED/2
-        navigate_command = ship.navigate(closest, map, speed, ignore_ships: true)
+        speed = Game::Constants::MAX_SPEED
+        navigate_command = ship.navigate(closest, map, speed, ignore_ships: false)
         # If the move is possible, add it to the command_queue (if there are too
         # many obstacles on the way or we are trapped (or we reached our
         # destination!), navigate_command will return null; don't fret though,

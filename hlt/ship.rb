@@ -31,11 +31,11 @@ class Ship < Entity
     @health = hp
     @docking_status = status
     @docking_progress = progress
-    @planet = planet if @docking_status != DockingStatus::UNDOCKED
+    @planet = planet_id if @docking_status != DockingStatus::UNDOCKED
   end
 
   def docked?
-    docking_status != Ship::DockingStatus::UNDOCKED
+    self.docking_status != DockingStatus::UNDOCKED
   end
 
   # Generate a command to accelerate this ship.
