@@ -36,7 +36,7 @@ while true
   map.me.ships.each do |ship|
     # skip if the ship is docked
     next if ship.docked?
-    next if Time.now - start_time > 1.5
+    next if Time.now - start_time > 1.6
 
     nearby_entities = map.entities_sorted_by_distance(ship)
     planets_by_distance = nearby_entities.select { |entity| entity.is_a? Planet }
@@ -77,11 +77,12 @@ while true
     end
 
     unless ship_command
-      planet = planets_by_distance.select {|planet| planet.owner && planet.owner != map.me }.first
-
-      target_ship = map.closest_of(ship, planet.docked_ships)
-      if target_ship
-        ship_command = ship.navigate(target_ship, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
+      enemy_planet = planets_by_distance.select {|planet| planet.owner && planet.owner != map.me }.first
+      if enemy_planet
+        target_ship = map.closest_of(ship, enemy_planet.docked_ships)
+        if target_ship
+          ship_command = ship.navigate(target_ship, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
+        end
       end
     end
     #
