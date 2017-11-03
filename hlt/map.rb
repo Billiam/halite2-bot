@@ -75,6 +75,12 @@ class Map
     result
   end
 
+  def closest_of(entity, foreign_entities)
+    foreign_entities.min_by do |foreign_entity|
+      entity.squared_distance_to(foreign_entity)
+    end
+  end
+
   # Check whether there is a straight-line path to the given point, without
   # obstacles in between.
   # ship: Source entity
