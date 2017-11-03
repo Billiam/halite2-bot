@@ -29,6 +29,8 @@ while true
   # end of the turn
   command_queue = []
 
+  speed = Game::Constants::MAX_SPEED
+
   # For each ship we control
   map.me.ships.each do |ship|
     # skip if the ship is docked
@@ -61,7 +63,6 @@ while true
       # As your skill progresses and your moves turn more optimal you may
       # wish to turn that option off.
       closest = ship.closest_point_to(planet)
-      speed = Game::Constants::MAX_SPEED
       navigate_command = ship.navigate(closest, map, speed, max_corrections: 30)
       # If the move is possible, add it to the command_queue (if there are too
       # many obstacles on the way or we are trapped (or we reached our
@@ -94,7 +95,6 @@ while true
         # As your skill progresses and your moves turn more optimal you may
         # wish to turn that option off.
         closest = ship.closest_point_to(planet)
-        speed = Game::Constants::MAX_SPEED
         navigate_command = ship.navigate(closest, map, speed, max_corrections: 30)
         # If the move is possible, add it to the command_queue (if there are too
         # many obstacles on the way or we are trapped (or we reached our
@@ -108,23 +108,32 @@ while true
     end
 
     unless ship_command
-      # bomb the whole fucking planet
-      enemy_planets = planets_by_distance.select {|planet| planet.owner && planet.owner != map.me }
+      planet = planets_by_distance.select {|planet| planet.owner && planet.owner != map.me }.first
 
-      enemy_planets.each do |planet|
-        ## and circle planet
-        speed = Game::Constants::MAX_SPEED
-        navigate_command = ship.navigate(planet, map, speed, max_corrections: 30, ignore_ships: true, ignore_my_ships: false)
-        # If the move is possible, add it to the command_queue (if there are too
-        # many obstacles on the way or we are trapped (or we reached our
-        # destination!), navigate_command will return null; don't fret though,
-        # we can run the command again the next turn)
-        if navigate_command
-          ship_command = navigate_command
-          break
-        end
+      target_ship = map.closest_of(ship, planet.docked_ships)
+      if target_ship
+        ship_command = ship.navigate(target_ship, map, speed, max_corrections: 30, ignore_ships: true, ignore_my_ships: false)
       end
     end
+
+    # unless ship_command
+    #   # bomb the whole fucking planet
+    #   enemy_planets = planets_by_distance.select {|planet| planet.owner && planet.owner != map.me }
+    #
+    #   enemy_planets.each do |planet|
+    #     ## and circle planet
+    #     speed = Game::Constants::MAX_SPEED
+    #     navigate_command = ship.navigate(planet, map, speed, max_corrections: 30, ignore_ships: true, ignore_my_ships: false)
+    #     # If the move is possible, add it to the command_queue (if there are too
+    #     # many obstacles on the way or we are trapped (or we reached our
+    #     # destination!), navigate_command will return null; don't fret though,
+    #     # we can run the command again the next turn)
+    #     if navigate_command
+    #       ship_command = navigate_command
+    #       break
+    #     end
+    #   end
+    # end
 
     command_queue << ship_command if ship_command
   end
