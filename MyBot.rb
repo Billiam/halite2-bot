@@ -80,8 +80,10 @@ while true
       enemy_planet = planets_by_distance.select {|planet| planet.owner && planet.owner != map.me }.first
       if enemy_planet
         target_ship = map.closest_of(ship, enemy_planet.docked_ships)
+
         if target_ship
-          ship_command = ship.navigate(target_ship, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
+          attack_distance = ship.closest_point_to(target_ship)
+          ship_command = ship.navigate(attack_distance, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
         end
       end
     end
