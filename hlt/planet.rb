@@ -31,6 +31,12 @@ class Planet < Entity
     @docked_ships[ship_id]
   end
 
+  def docked_ships
+    return [] unless owned?
+
+    @docked_ships.values
+  end
+
   # Determines if the planet has an owner.
   # return: true if owned, false otherwise
   def owned?
@@ -86,7 +92,7 @@ class Planet < Entity
 
     # Fetch the ship ids from the tokens array
     Integer(ship_count).times do
-      docked_ships << tokens.shift
+      docked_ships << Integer(tokens.shift)
     end
 
     # (id, x, y, hp, radius, docking_spots, owner, docked_ship_ids)
