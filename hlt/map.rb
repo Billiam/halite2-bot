@@ -75,6 +75,12 @@ class Map
     result
   end
 
+  def entities_sorted_by_distance(entity)
+    (ships + planets).reject { |foreign_entity| entity == foreign_entity }.sort_by do |foreign_entity|
+      entity.squared_distance_to(foreign_entity)
+    end
+  end
+
   def closest_of(entity, foreign_entities)
     foreign_entities.min_by do |foreign_entity|
       entity.squared_distance_to(foreign_entity)

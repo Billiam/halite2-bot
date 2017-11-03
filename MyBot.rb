@@ -36,8 +36,8 @@ while true
     # skip if the ship is docked
     next if ship.docked?
 
-    nearby_entities = map.nearby_entities_by_distance(ship)
-    planets_by_distance = nearby_entities.sort.map {|_dist, list| list.select {|entity| entity.is_a? Planet }}.flatten
+    nearby_entities = map.entities_sorted_by_distance(ship)
+    planets_by_distance = nearby_entities.select { |entity| entity.is_a? Planet }
 
     ship_command = nil
 
@@ -63,7 +63,7 @@ while true
       # As your skill progresses and your moves turn more optimal you may
       # wish to turn that option off.
       closest = ship.closest_point_to(planet)
-      navigate_command = ship.navigate(closest, map, speed, max_corrections: 30)
+      navigate_command = ship.navigate(closest, map, speed, max_corrections: 30, angular_step: 3)
       # If the move is possible, add it to the command_queue (if there are too
       # many obstacles on the way or we are trapped (or we reached our
       # destination!), navigate_command will return null; don't fret though,
@@ -95,7 +95,7 @@ while true
         # As your skill progresses and your moves turn more optimal you may
         # wish to turn that option off.
         closest = ship.closest_point_to(planet)
-        navigate_command = ship.navigate(closest, map, speed, max_corrections: 30)
+        navigate_command = ship.navigate(closest, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
         # If the move is possible, add it to the command_queue (if there are too
         # many obstacles on the way or we are trapped (or we reached our
         # destination!), navigate_command will return null; don't fret though,
@@ -112,7 +112,7 @@ while true
 
       target_ship = map.closest_of(ship, planet.docked_ships)
       if target_ship
-        ship_command = ship.navigate(target_ship, map, speed, max_corrections: 30, ignore_ships: true, ignore_my_ships: false)
+        ship_command = ship.navigate(target_ship, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
       end
     end
 
