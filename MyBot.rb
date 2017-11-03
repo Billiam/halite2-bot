@@ -24,7 +24,7 @@ while true
   # Update the map for the new turn and get the latest version
   game.update_map
   map = game.map
-
+  start_time = Time.now
   # Here we define the set of commands to be sent to the Halite engine at the
   # end of the turn
   command_queue = []
@@ -35,6 +35,7 @@ while true
   map.me.ships.each do |ship|
     # skip if the ship is docked
     next if ship.docked?
+    next if Time.now - start_time > 1.5
 
     nearby_entities = map.entities_sorted_by_distance(ship)
     planets_by_distance = nearby_entities.select { |entity| entity.is_a? Planet }
