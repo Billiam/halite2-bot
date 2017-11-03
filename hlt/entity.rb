@@ -21,7 +21,11 @@ class Entity
   # target: The target to get distance to. Responds to x & y.
   # return: distance (float)
   def calculate_distance_between(target)
-    Math.sqrt((target.x - x)**2 + (target.y - y)**2)
+    Math.sqrt(squared_distance_to(target))
+  end
+
+  def squared_distance_to(target)
+    (target.x - x)**2 + (target.y - y)**2
   end
 
   # Calculates the angle between this object and the target in degrees.
