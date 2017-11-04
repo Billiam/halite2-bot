@@ -15,7 +15,7 @@ require 'game'
 
 # Here we define the bot's name as Opportunity and initialize the game, including
 # communication with the Halite engine.
-game = Game.new("Weighted")
+game = Game.new("LowerAgression")
 # We print our start message to the logs
 game.logger.info("Starting my Opportunity bot!")
 
@@ -42,14 +42,14 @@ while true
     planets_by_distance = nearby_entities.select { |entity| entity.is_a? Planet }
 
     # reinforce
-    non_full_planets = planets_by_distance.first(4).select {|planet|!planet.full? && [map.me, nil].include?(planet.owner) }
+    non_full_planets = planets_by_distance.first(4).select {|planet| !planet.full? && [map.me, nil].include?(planet.owner) }
     ship_command = non_full_planets.lazy.map do |planet|
       ship.dock(planet) if ship.can_dock?(planet)
     end.find(&:itself)
 
     unless ship_command
       # conquer
-      ship_command = map.target_planets_by_weight(ship, distance: 10, defense: 2).lazy.map do |target_planet|
+      ship_command = map.target_planets_by_weight(ship, distance: 1, defense: -1.5).lazy.map do |target_planet|
         if target_planet.owned?
           next map.sort_closest(ship, target_planet.docked_ships).lazy.map do |target_ship|
             attack_point = ship.closest_point_to(target_ship)
