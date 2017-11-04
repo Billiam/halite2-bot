@@ -17,6 +17,7 @@ class Map
     @height = height
     @players = {}
     @planets = {}
+    @planet_defense = {}
   end
 
   # return: Array of all players
@@ -56,7 +57,7 @@ class Map
     tokens = input.split
     @players, tokens = Player::parse(tokens)
     @planets, tokens = Planet::parse(tokens)
-
+    @planet_defense = nil
     raise if tokens.length != 0
     link
   end
@@ -75,8 +76,43 @@ class Map
     result
   end
 
+  def planetary_defense
+    @planet_defense ||= begin
+      enemy_defenses = ships.reject {|ship| ship.owner == me || ship.docked? }
+      planets.map do |planet|
+        # number of enemy ships in area
+        defense = enemy_defenses.count do |enemy_ship|
+          planet.squared_distance_to(enemy_ship) <= (planet.radius + 5 + 4) ** 2
+        end
+
+        [planet, defense]
+      end.to_h
+    end
+  end
+
+  def my_planets
+    planets.select {|planet| planet.owner == me }
+  end
+
+  def enemy_planets
+    planets - my_planets
+  end
+
+  def target_planets_by_weight(entity, distance: 1, defense: 1)
+    enemy_planets.sort_by do |planet|
+      surrounding_enemies = planetary_defense[planet] || 0
+      entity.calculate_distance_between(planet) * distance + surrounding_enemies * defense
+    end
+  end
+
   def entities_sorted_by_distance(entity)
     (ships + planets).reject { |foreign_entity| entity == foreign_entity }.sort_by do |foreign_entity|
+      entity.squared_distance_to(foreign_entity)
+    end
+  end
+
+  def sort_closest(entity, foreign_entities)
+    foreign_entities.sort_by do |foreign_entity|
       entity.squared_distance_to(foreign_entity)
     end
   end
