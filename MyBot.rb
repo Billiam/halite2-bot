@@ -15,7 +15,7 @@ require 'game'
 
 # Here we define the bot's name as Opportunity and initialize the game, including
 # communication with the Halite engine.
-game = Game.new("LowerAgression")
+game = Game.new("ReduceSuicide")
 # We print our start message to the logs
 game.logger.info("Starting my Opportunity bot!")
 

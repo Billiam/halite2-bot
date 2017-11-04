@@ -152,7 +152,13 @@ class Map
 
     entities.each do |foreign_entity|
       next if foreign_entity == ship || foreign_entity == target
-      if intersect_segment_circle(ship, target, foreign_entity, fudge=ship.radius + 0.1)
+
+      fudge = ship.radius + 1
+      if foreign_entity.is_a?(Ship) && foreign_entity.owner == me
+        fudge=fudge*1.2
+      end
+
+      if intersect_segment_circle(ship, target, foreign_entity, fudge)
         return true
       end
     end
@@ -183,7 +189,8 @@ class Map
     a = dx**2 + dy**2
     b = -2 * (alpha.x**2 - alpha.x*omega.x - alpha.x*circle.x + omega.x*circle.x +
               alpha.y**2 - alpha.y*omega.y - alpha.y*circle.y + omega.y*circle.y)
-    c = (alpha.x - circle.x)**2 + (alpha.y - circle.y)**2
+
+    # c = (alpha.x - circle.x)**2 + (alpha.y - circle.y)**2
 
     if a == 0.0
       # Start and end are the same point
@@ -200,6 +207,6 @@ class Map
     closest_y = alpha.y + dy * t
     closest_distance = Position.new(closest_x, closest_y).calculate_distance_between(circle)
 
-    return closest_distance <= circle.radius + fudge
+    closest_distance <= circle.radius + fudge
   end
 end
