@@ -41,9 +41,13 @@ class Game
     player_id = Integer(read_from_input)
     @logger = set_up_logging(player_id)
     width, height = read_ints_from_input
-    write_to_output(name)
     @map = Map.new(player_id, width, height)
     update_map
+    prepare_game
+    write_to_output(name)
+  end
+
+  def prepare_game
   end
 
   def update_map
