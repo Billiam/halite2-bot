@@ -15,7 +15,7 @@ require 'game'
 
 # Here we define the bot's name as Opportunity and initialize the game, including
 # communication with the Halite engine.
-game = Game.new("ReduceSuicide")
+game = Game.new("Bomb")
 # We print our start message to the logs
 game.logger.info("Starting my Opportunity bot!")
 
@@ -31,6 +31,24 @@ while true
   command_queue = []
 
   speed = Game::Constants::MAX_SPEED
+
+  explodable_planets = map.planets.map do |planet|
+    explosion_radius = [planet.radius, Game::Constants::DOCK_RADIUS].max + planet.radius + 0.5
+    count = map.ships.inject(0) do |sum, ship|
+      in_radius = planet.calculate_distance_between(ship) < explosion_radius
+      cost_modifier = ship.owner == map.me ? -1 : 1
+      sum + cost_modifier * (in_radius ? 1 : 0)
+    end
+
+    expending = planet.health / Game::Constants::BASE_SHIP_HEALTH
+    expending += planet.docking_spots if planet.owner == map.me
+
+    value = count - expending
+
+    { planet: planet, value: value } if value > 3
+  end.compact.sort_by do |data|
+    -data[:value]
+  end
 
   # For each ship we control
   map.me.ships.each do |ship|
@@ -48,6 +66,14 @@ while true
     end.find(&:itself)
 
     unless ship_command
+      # bomb
+      ship_command = explodable_planets.lazy.map do |planet|
+        game.logger.info("#{ship.id} trying to attack #{planet[:planet].id}")
+        ship.navigate(planet[:planet], map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
+      end.find(&:itself)
+    end
+
+    unless ship_command
       # conquer
       ship_command = map.target_planets_by_weight(ship, distance: 1, defense: -1.5).lazy.map do |target_planet|
         if target_planet.owned?
@@ -60,6 +86,10 @@ while true
         docking_position = ship.closest_point_to(target_planet)
         ship.navigate(docking_position, map, speed, max_corrections: 30, angular_step: 3)
       end.find(&:itself)
+    end
+
+    unless ship_command
+      game.logger.info("Couldn't find anything to do")
     end
 
     command_queue << ship_command if ship_command
