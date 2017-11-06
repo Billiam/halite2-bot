@@ -15,7 +15,7 @@ require 'game'
 
 # Here we define the bot's name as Opportunity and initialize the game, including
 # communication with the Halite engine.
-game = Game.new("Bomb")
+game = Game.new("DistantRelative")
 # We print our start message to the logs
 game.logger.info("Starting my Opportunity bot!")
 
@@ -78,12 +78,12 @@ while true
       ship_command = map.target_planets_by_weight(ship, distance: 1, defense: -1.5).lazy.map do |target_planet|
         if target_planet.owned?
           next map.sort_closest(ship, target_planet.docked_ships).lazy.map do |target_ship|
-            attack_point = ship.closest_point_to(target_ship)
+            attack_point = ship.closest_point_to(target_ship, Game::Constants::WEAPON_RADIUS - ship.radius * 3)
             ship.navigate(attack_point, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
           end.find(&:itself)
         end
 
-        docking_position = ship.closest_point_to(target_planet)
+        docking_position = ship.closest_point_to(target_planet, Game::Constants::DOCK_RADIUS - ship.radius * 2)
         ship.navigate(docking_position, map, speed, max_corrections: 30, angular_step: 3)
       end.find(&:itself)
     end
