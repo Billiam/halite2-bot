@@ -25,6 +25,10 @@ class Map
     @players.values
   end
 
+  def enemy_players
+    players - [me]
+  end
+
   # Fetch player by id
   # id: the id (integer) of the desired player
   # return: The player associated with id
@@ -50,7 +54,11 @@ class Map
   end
 
   def ships
-    players.map(&:ships).flatten
+    players.flat_map(&:ships)
+  end
+
+  def ship(ship_id)
+    players.lazy.flat_map(&:ships).find {|ship| ship.id == ship_id }
   end
 
   def update(input)
@@ -90,8 +98,20 @@ class Map
     end
   end
 
+  def active_enemies
+    enemy_players.select {|player| player_active?(player) }
+  end
+
+  def player_active?(player)
+    player.ships.any? || player_planets(player).any?
+  end
+
+  def player_planets(player)
+    planets.select { |planet| planet.owner == player }
+  end
+
   def my_planets
-    planets.select {|planet| planet.owner == me }
+    player_planets(me)
   end
 
   def enemy_planets
@@ -127,23 +147,7 @@ class Map
   # ship: Source entity
   # target: target entity
   # ignore: Array of entity types to ignore
-  # return: array of obstacles between the ship and target
-  def obstacles_between(ship, target, ignore=[])
-    obstacles = []
-    entities = []
-    entities.concat(planets) unless ignore.include?(:planets)
-    entities.concat(ships) unless ignore.include?(:ships)
-    entities.concat(me.ships) if !ignore.include?(:my_ships) && ignore.include?(:ships)
-
-    entities.each do |foreign_entity|
-      next if foreign_entity == ship || foreign_entity == target
-      if intersect_segment_circle(ship, target, foreign_entity, fudge=ship.radius + 0.1)
-        obstacles << foreign_entity
-      end
-    end
-    obstacles
-  end
-
+  # return: Whether there are any obstacles
   def any_obstacles_between?(ship, target, ignore=[])
     entities = []
     entities.concat(planets) unless ignore.include?(:planets)
@@ -155,7 +159,7 @@ class Map
 
       fudge = ship.radius + 1
       if foreign_entity.is_a?(Ship) && foreign_entity.owner == me
-        fudge=fudge*1.2
+        fudge = fudge * 1.7
       end
 
       if intersect_segment_circle(ship, target, foreign_entity, fudge)

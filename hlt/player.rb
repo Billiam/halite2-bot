@@ -16,6 +16,18 @@ class Player
     @ships[ship_id]
   end
 
+  def average_location
+    @average_location ||= begin
+      sum_coord = ships.inject({x: 0, y: 0}) do |av, ship|
+        av[:x] += ship.x
+        av[:y] += ship.y
+        av
+      end
+
+      { x: sum_coord[:x] / ships.size, y: sum_coord[:y] / ships.size }
+    end
+  end
+
   # Parse an entire user input string from the Halite engine for all users.
   # tokens: The input string as a list of str from the Halite engine.
   # return: The parsed players in the form of player hash, and remaining tokens

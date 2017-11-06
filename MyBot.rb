@@ -15,9 +15,12 @@ require 'game'
 
 # Here we define the bot's name as Opportunity and initialize the game, including
 # communication with the Halite engine.
-game = Game.new("DistantRelative")
+game = Game.new("Tasks")
 # We print our start message to the logs
 game.logger.info("Starting my Opportunity bot!")
+
+speed = Game::Constants::MAX_SPEED
+assignments = {}
 
 while true
   # TURN START
@@ -30,7 +33,42 @@ while true
   # end of the turn
   command_queue = []
 
-  speed = Game::Constants::MAX_SPEED
+  # update assignments
+  assignments = assignments.select { |ship_id, player_id| map.ship(ship_id) && map.player_active?(map.player(player_id)) }
+
+  # game.logger.error(assignments.map {|k, v| "#{k} => #{v}"})
+  max_assignments = map.me.ships.size - 2
+
+  if assignments.size < max_assignments
+    active_enemies = map.active_enemies
+
+    if active_enemies.size > assignments.size
+      self_location = map.me.average_location
+
+      # TODO: pull into map method
+      # TODO: Evaluate average vs median distances (find enemy core)
+      sorted_enemies = active_enemies.sort_by do |player|
+        location = player.average_location
+        (location[:x] - self_location[:x])**2 + (location[:y] - self_location[:y])**2
+      end
+
+      available_ships = map.me.ships.reject(&:docked?).reject {|ship| assignments.key?(ship.id) }
+
+      sorted_enemies.each do |enemy|
+        unless assignments.value?(enemy.id)
+          # find a ship without an assignment
+          assignments[available_ships.first.id] = enemy.id
+          break if assignments.size >= max_assignments
+        end
+      end
+    end
+  else
+    game.logger.info("Unassigning ships")
+
+    while assignments.size > [0, max_assignments].max do
+      assignments.delete(assignments.keys.last)
+    end
+  end
 
   explodable_planets = map.planets.map do |planet|
     explosion_radius = [planet.radius, Game::Constants::DOCK_RADIUS].max + planet.radius + 0.5
@@ -56,14 +94,43 @@ while true
     next if ship.docked?
     next if Time.now - start_time > 1.6
 
+    ship_command = nil
     nearby_entities = map.entities_sorted_by_distance(ship)
     planets_by_distance = nearby_entities.select { |entity| entity.is_a? Planet }
 
-    # reinforce
-    non_full_planets = planets_by_distance.first(4).select {|planet| !planet.full? && [map.me, nil].include?(planet.owner) }
-    ship_command = non_full_planets.lazy.map do |planet|
-      ship.dock(planet) if ship.can_dock?(planet)
-    end.find(&:itself)
+    enemy_target_id = assignments[ship.id]
+    if enemy_target_id
+      # assigned tasks
+      enemy_target = map.player(enemy_target_id)
+
+      closest_enemy_ships = nearby_entities & enemy_target.ships
+      ship_command = closest_enemy_ships.select(&:docked?).lazy.map do |target_ship|
+        attack_point = ship.closest_point_to(target_ship, Game::Constants::WEAPON_RADIUS - ship.radius * 3)
+        ship.navigate(attack_point, map, speed, max_corrections: 45, angular_step: 3)
+      end.find(&:itself)
+
+      unless ship_command
+        stalked_ship = closest_enemy_ships.first
+        # no docked ships, follow enemy ships
+        if ship.calculate_distance_between(stalked_ship) < 10
+          # RUN!
+          game.logger.error("too close to ship, should retreat")
+        else
+          nav_point = ship.closest_point_to(stalked_ship, 10)
+          ship_command = ship.navigate(nav_point, map, speed, max_corrections: 30, angular_step: 6)
+        end
+      end
+
+      ship_command = :skip unless ship_command
+    end
+
+    unless ship_command
+      # reinforce
+      non_full_planets = planets_by_distance.first(4).select {|planet| !planet.full? && [map.me, nil].include?(planet.owner) }
+      ship_command = non_full_planets.lazy.map do |planet|
+        ship.dock(planet) if ship.can_dock?(planet)
+      end.find(&:itself)
+    end
 
     unless ship_command
       # bomb
@@ -88,11 +155,7 @@ while true
       end.find(&:itself)
     end
 
-    unless ship_command
-      game.logger.info("Couldn't find anything to do")
-    end
-
-    command_queue << ship_command if ship_command
+    command_queue << ship_command if ship_command && ship_command != :skip
   end
 
   game.send_command_queue(command_queue)
