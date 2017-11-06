@@ -38,6 +38,8 @@ class Game
     $stdout.sync = true
 
     @name = name
+    @turn = 0
+
     player_id = Integer(read_from_input)
     @logger = set_up_logging(player_id)
     width, height = read_ints_from_input
@@ -51,8 +53,9 @@ class Game
   end
 
   def update_map
-    logger.info("---NEW TURN---")
+    logger.info("---NEW TURN (#{@turn})---")
     map.update(read_from_input)
+    @turn += 1
   end
 
   def send_command_queue(commands)
