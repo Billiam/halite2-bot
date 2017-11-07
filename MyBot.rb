@@ -15,8 +15,9 @@ require 'game'
 
 # Here we define the bot's name as Opportunity and initialize the game, including
 # communication with the Halite engine.
-game = Game.new("Tasks")
+game = Game.new("FutureVision")
 # We print our start message to the logs
+LOGGER = game.logger
 game.logger.info("Starting my Opportunity bot!")
 
 speed = Game::Constants::MAX_SPEED

@@ -154,20 +154,19 @@ class Map
     entities.concat(ships) unless ignore.include?(:ships)
     entities.concat(me.ships) if !ignore.include?(:my_ships) && ignore.include?(:ships)
 
-    entities.each do |foreign_entity|
+    entities.find do |foreign_entity|
       next if foreign_entity == ship || foreign_entity == target
 
       fudge = ship.radius + 1
-      if foreign_entity.is_a?(Ship) && foreign_entity.owner == me
-        fudge = fudge * 1.7
+
+      if foreign_entity.traveling?
+        next true if intersect_segment_segment(ship, target, foreign_entity, foreign_entity.next_position)
       end
 
-      if intersect_segment_circle(ship, target, foreign_entity, fudge)
-        return true
-      end
+      next true if intersect_segment_circle(ship, target, foreign_entity, fudge)
+
+      false
     end
-
-    false
   end
 
   private
@@ -212,5 +211,53 @@ class Map
     closest_distance = Position.new(closest_x, closest_y).calculate_distance_between(circle)
 
     closest_distance <= circle.radius + fudge
+  end
+
+  def position_equal?(a, b)
+    a.x == b.x && a.y == b.y
+  end
+
+  def intersect_segment_segment(start_1, end_1, start_2, end_2)
+    rx = end_1.x - start_1.x
+    ry = end_1.y - start_1.y
+
+    sx = end_2.x - start_2.x
+    sy = end_2.y - start_2.y
+
+    tx = start_2.x - start_1.x
+    ty = start_2.y - start_1.y
+
+    # cross products
+    u_numerator = tx * ry - ty * rx
+    denominator = rx * sy - ry * sx
+
+    if u_numerator == 0 && denominator == 0
+      # lines are collinear
+      if position_equal?(start_1, start_2) || position_equal?(start_1, end_2) || position_equal?(end_1, start_2) || position_equal?(end_1, end_2)
+        return true
+      end
+
+      # Do they overlap? (Are all the point differences in either direction the same sign)
+      return [
+        start_2.x - start_1.x,
+        start_2.x - end_1.x,
+        end_2.x - start_1.x,
+        end_2.x - end_2.x
+      ].all? {|i| i < 0} ||
+      [
+        start_2.y - start_1.y,
+        start_2.y - end_1.y,
+        end_2.y - start_1.y,
+        end_2.y - end_1.y
+      ].all? {|i| i < 0 }
+    end
+
+    # lines are parallel
+    return false if denominator == 0
+
+    u = u_numerator / denominator
+    t = (tx * sy - ty * sx) / denominator
+
+    t.between?(0, 1) && u.between?(0, 1)
   end
 end

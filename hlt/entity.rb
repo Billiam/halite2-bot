@@ -17,6 +17,10 @@ class Entity
     @id = id
   end
 
+  def traveling?
+    false
+  end
+
   # Calculates the distance between this object and the target.
   # target: The target to get distance to. Responds to x & y.
   # return: distance (float)

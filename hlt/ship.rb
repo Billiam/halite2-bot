@@ -1,5 +1,6 @@
 require 'entity'
 require 'position'
+require 'vector'
 
 # A ship in the game.
 
@@ -32,6 +33,15 @@ class Ship < Entity
     @docking_status = status
     @docking_progress = progress
     @planet = planet_id if @docking_status != DockingStatus::UNDOCKED
+    @vector = Vector.new(0, 0)
+  end
+
+  def traveling?
+    !@vector.no_magnitude?
+  end
+
+  def next_position
+    @vector + self
   end
 
   def docked?
@@ -43,7 +53,11 @@ class Ship < Entity
   # angle: The angle to move the ship in. Should always be a positive number, but %360 fixes that.
   # return: The command string to be passed to the Halite engine.
   def thrust(magnitude, angle)
-    "t #{id} #{Integer(magnitude)} #{Integer(angle % 360)}"
+    thrust_angle = Integer(angle % 360)
+    thrust_magnitude = Integer(magnitude)
+    @vector = Vector.from_angle(thrust_angle, thrust_magnitude)
+
+    "t #{id} #{thrust_magnitude} #{thrust_angle}"
   end
 
   # Generate a command to dock to a planet.
