@@ -157,7 +157,7 @@ class Map
     entities.find do |foreign_entity|
       next if foreign_entity == ship || foreign_entity == target
 
-      fudge = ship.radius + 1
+      fudge = ship.radius * 2
 
       if foreign_entity.traveling?
         next true if intersect_segment_segment(ship, target, foreign_entity, foreign_entity.next_position)
