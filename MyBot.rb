@@ -55,9 +55,13 @@ while true
       available_ships = map.me.ships.reject(&:docked?).reject {|ship| assignments.key?(ship.id) }
 
       sorted_enemies.each do |enemy|
+        # If ship already assigned to a player
         unless assignments.value?(enemy.id)
           # find a ship without an assignment
-          assignments[available_ships.first.id] = enemy.id
+          available_ship = available_ships.shift
+          break unless available_ship
+
+          assignments[available_ship.id] = enemy.id
           break if assignments.size >= max_assignments
         end
       end
