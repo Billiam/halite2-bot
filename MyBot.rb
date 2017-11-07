@@ -15,7 +15,7 @@ require 'game'
 
 # Here we define the bot's name as Opportunity and initialize the game, including
 # communication with the Halite engine.
-game = Game.new("Tolerances")
+game = Game.new("OffsetLines")
 # We print our start message to the logs
 LOGGER = game.logger
 game.logger.info("Starting my Opportunity bot!")

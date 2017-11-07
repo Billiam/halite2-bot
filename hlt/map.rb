@@ -160,7 +160,7 @@ class Map
       fudge = ship.radius * 2
 
       if foreign_entity.traveling?
-        next true if intersect_segment_segment(ship, target, foreign_entity, foreign_entity.next_position)
+        next true if intersect_segment_segment_fudge(ship, target, foreign_entity, foreign_entity.next_position, fudge)
       end
 
       next true if intersect_segment_circle(ship, target, foreign_entity, fudge)
@@ -215,6 +215,29 @@ class Map
 
   def position_equal?(a, b)
     a.x == b.x && a.y == b.y
+  end
+
+
+  def line_to_polygon(start, terminal, width)
+    line_angle = start.calculate_angle_between(terminal)
+  end
+
+  def intersect_segment_segment_fudge(start_1, end_1, start_2, end_2, fudge = 0.5)
+     # verify we should bother with expensive check
+      if intersect_segment_circle(start_1, end_1, start_2, Game::Constants::MAX_SPEED * 2)
+        # expand lines to polygons with width
+        start_line = segment_to_polygon(start_1, end_1, fudge)
+        end_line = segment_to_polygon(start_2, end_2, fudge)
+
+        start_line.product(end_line).find do |line_a, line_b|
+          intersect_segment_segment(line_a[0], line_a[1], line_b[0], line_b[1])
+        end
+
+      end
+
+      false
+    end
+
   end
 
   def intersect_segment_segment(start_1, end_1, start_2, end_2)
