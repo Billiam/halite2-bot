@@ -77,7 +77,11 @@ class Ship < Entity
   # planet: the Planet you are attempting to dock at
   # return: true if can dock, false if no
   def can_dock?(planet)
-    calculate_distance_between(planet) <= planet.radius + Game::Constants::DOCK_RADIUS
+    calculate_distance_between(planet) <= planet.radius + Game::Constants::DOCK_RADIUS + Game::Constants::SHIP_RADIUS
+  end
+
+  def can_attack?(ship)
+    calculate_distance_between(ship) <= Game::Constants::WEAPON_RADIUS + Game::Constants::SHIP_RADIUS * 2
   end
 
   # Move a ship to a specific target position (Entity).
@@ -125,7 +129,8 @@ class Ship < Entity
                       max_corrections: max_corrections-1,
                       angular_step: angular_step)
     end
-    speed = distance >= speed ? speed : distance
+    speed = [distance.ceil, speed].min
+    LOGGER.error("#{self.id} → #{distance}, #{speed}")
     thrust(speed, angle)
   end
 
