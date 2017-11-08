@@ -2,3 +2,4 @@
 .gitattributes export-ignore
 .gitignore export-ignore
 bin export-ignore
+/halite export-ignore
