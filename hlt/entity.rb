@@ -56,6 +56,16 @@ class Entity
     Position.new(x, y)
   end
 
+  def approach_closest_point(target, min_distance=3)
+    pos = closest_point_to(target, min_distance)
+    distance_to_new_position = squared_distance_to(pos)
+
+    LOGGER.info([self.id, distance_to_new_position, calculate_angle_between(target), calculate_angle_between(pos)])
+    # if moving away less than 1
+    return self if distance_to_new_position < 1.0 && (calculate_angle_between(target) - calculate_angle_between(pos)).abs > 160
+
+    pos
+  end
   # @abstract method - specific to the subclass
   # def link(players, planets)
   # end

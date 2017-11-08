@@ -15,14 +15,14 @@ require 'game'
 
 # Here we define the bot's name as Opportunity and initialize the game, including
 # communication with the Halite engine.
-game = Game.new("FutureVision")
+game = Game.new("Tolerances")
 # We print our start message to the logs
 LOGGER = game.logger
 game.logger.info("Starting my Opportunity bot!")
 
 speed = Game::Constants::MAX_SPEED
 assignments = {}
-
+attack_fudge = 0.25
 while true
   # TURN START
   # Update the map for the new turn and get the latest version
@@ -110,7 +110,9 @@ while true
 
       closest_enemy_ships = nearby_entities & enemy_target.ships
       ship_command = closest_enemy_ships.select(&:docked?).lazy.map do |target_ship|
-        attack_point = ship.closest_point_to(target_ship, Game::Constants::WEAPON_RADIUS - ship.radius * 3)
+        attack_point = ship.approach_closest_point(target_ship, Game::Constants::WEAPON_RADIUS + attack_fudge)
+        next :skip if attack_point.x == ship.x && attack_point.y == ship.y
+
         ship.navigate(attack_point, map, speed, max_corrections: 45, angular_step: 3)
       end.find(&:itself)
 
@@ -121,7 +123,7 @@ while true
           # RUN!
           game.logger.error("too close to ship, should retreat")
         else
-          nav_point = ship.closest_point_to(stalked_ship, 10)
+          nav_point = ship.closest_point_to(stalked_ship, Game::Constants::MAX_SPEED + Game::Constants::WEAPON_RADIUS + Game::Constants::SHIP_RADIUS * 2)
           ship_command = ship.navigate(nav_point, map, speed, max_corrections: 30, angular_step: 6)
         end
       end
@@ -150,12 +152,14 @@ while true
       ship_command = map.target_planets_by_weight(ship, distance: 1, defense: -1.5).lazy.map do |target_planet|
         if target_planet.owned?
           next map.sort_closest(ship, target_planet.docked_ships).lazy.map do |target_ship|
-            attack_point = ship.closest_point_to(target_ship, Game::Constants::WEAPON_RADIUS - ship.radius * 3)
+            attack_point = ship.approach_closest_point(target_ship, Game::Constants::WEAPON_RADIUS + attack_fudge)
+            # TODO: Try to attack only one
+            # TODO: Try to navigate to planet range
             ship.navigate(attack_point, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
           end.find(&:itself)
         end
 
-        docking_position = ship.closest_point_to(target_planet, Game::Constants::DOCK_RADIUS - ship.radius * 2)
+        docking_position = ship.approach_closest_point(target_planet, Game::Constants::DOCK_RADIUS)
         ship.navigate(docking_position, map, speed, max_corrections: 30, angular_step: 3)
       end.find(&:itself)
     end
