@@ -110,6 +110,10 @@ class Map
     planets.select { |planet| planet.owner == player }
   end
 
+  def enemy_ships
+    ships - me.ships
+  end
+
   def my_planets
     player_planets(me)
   end
@@ -125,9 +129,7 @@ class Map
   end
 
   def entities_sorted_by_distance(entity)
-    (ships + planets).reject { |foreign_entity| entity == foreign_entity }.sort_by do |foreign_entity|
-      entity.squared_distance_to(foreign_entity)
-    end
+    sort_closest(entity, (ships + planets).reject { |foreign_entity| entity == foreign_entity })
   end
 
   def sort_closest(entity, foreign_entities)

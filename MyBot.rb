@@ -15,7 +15,7 @@ require 'game'
 
 # Here we define the bot's name as Opportunity and initialize the game, including
 # communication with the Halite engine.
-game = Game.new("OffsetLines")
+game = Game.new("Defender")
 # We print our start message to the logs
 LOGGER = game.logger
 game.logger.info("Starting my Opportunity bot!")
@@ -129,6 +129,26 @@ while true
       end
 
       ship_command = :skip unless ship_command
+    end
+
+    unless ship_command
+      # protec
+      active_enemies = map.enemy_ships.reject(&:docked?)
+
+      # TODO: cache per planet/turn
+      ship_command = planets_by_distance.lazy.select {|planet| planet.owner == map.me }.select do |planet|
+        ship.squared_distance_to(planet) < (Game::Constants::MAX_SPEED * 6 + planet.radius) ** 2
+      end.map do |planet|
+        # TODO: prevent dithering between close ships by including closest to attacking ship in consideration
+        map.sort_closest(planet, active_enemies).lazy.select do |target_ship|
+          target_ship.squared_distance_to(planet) < (Game::Constants::MAX_SPEED * 6 + planet.radius) ** 2
+        end.map do |target_ship|
+          attack_point = ship.approach_closest_point(target_ship, 3)
+          ship.navigate(attack_point, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
+        end.find(&:itself)
+      end.find(&:itself)
+
+      ship_command = nil if ship_command == :break
     end
 
     unless ship_command
