@@ -76,9 +76,9 @@ while true
   end
 
   explodable_planets = map.planets.map do |planet|
-    explosion_radius = [planet.radius, Game::Constants::DOCK_RADIUS].max + planet.radius + 0.5
+    explosion_radius = ([planet.radius, Game::Constants::DOCK_RADIUS].max + planet.radius + 0.5) ** 2
     count = map.ships.inject(0) do |sum, ship|
-      in_radius = planet.calculate_distance_between(ship) < explosion_radius
+      in_radius = planet.squared_distance_to(ship) < explosion_radius
       cost_modifier = ship.owner == map.me ? -1 : 1
       sum + cost_modifier * (in_radius ? 1 : 0)
     end
@@ -119,7 +119,7 @@ while true
       unless ship_command
         stalked_ship = closest_enemy_ships.first
         # no docked ships, follow enemy ships
-        if ship.calculate_distance_between(stalked_ship) < 10
+        if ship.squared_distance_to(stalked_ship) < 10 ** 2
           # RUN!
           game.logger.error("too close to ship, should retreat")
         else

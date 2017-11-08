@@ -197,7 +197,7 @@ class Map
 
     if a == 0.0
       # Start and end are the same point
-      return alpha.calculate_distance_between(circle) <= circle.radius + fudge
+      return alpha.squared_distance_to(circle) <= (circle.radius + fudge) ** 2
     end
 
     # Time along segment when closest to the circle (vertex of the quadratic)
@@ -208,9 +208,9 @@ class Map
 
     closest_x = alpha.x + dx * t
     closest_y = alpha.y + dy * t
-    closest_distance = Position.new(closest_x, closest_y).calculate_distance_between(circle)
+    squared_closest_distance = Position.new(closest_x, closest_y).squared_distance_to(circle)
 
-    closest_distance <= circle.radius + fudge
+    squared_closest_distance <= (circle.radius + fudge) ** 2
   end
 
   def position_equal?(a, b)

@@ -77,11 +77,11 @@ class Ship < Entity
   # planet: the Planet you are attempting to dock at
   # return: true if can dock, false if no
   def can_dock?(planet)
-    calculate_distance_between(planet) <= planet.radius + Game::Constants::DOCK_RADIUS + Game::Constants::SHIP_RADIUS
+    squared_distance_to(planet) <= (planet.radius + Game::Constants::DOCK_RADIUS + Game::Constants::SHIP_RADIUS) ** 2
   end
 
   def can_attack?(ship)
-    calculate_distance_between(ship) <= Game::Constants::WEAPON_RADIUS + Game::Constants::SHIP_RADIUS * 2
+    squared_distance_to(ship) <= (Game::Constants::WEAPON_RADIUS + Game::Constants::SHIP_RADIUS * 2) ** 2
   end
 
   # Move a ship to a specific target position (Entity).
