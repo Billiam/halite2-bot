@@ -160,7 +160,7 @@ class Map
       fudge = ship.radius * 2
 
       if foreign_entity.traveling?
-        next true if intersect_segment_segment_fudge(ship, target, foreign_entity, foreign_entity.next_position, fudge)
+        next true if intersect_segment_segment_width(ship, target, foreign_entity, foreign_entity.next_position, fudge)
       end
 
       next true if intersect_segment_circle(ship, target, foreign_entity, fudge)
@@ -217,27 +217,47 @@ class Map
     a.x == b.x && a.y == b.y
   end
 
-
-  def line_to_polygon(start, terminal, width)
+  def segment_to_polygon(start, terminal, width)
     line_angle = start.calculate_angle_between(terminal)
+
+    width_angle = line_angle - 90
+
+    offset_height = Math.sin(width_angle) * width/2
+    offset_width = Math.cos(width_angle) * width/2
+
+    # TODO: possibly sort start/terminal lines.
+    # Possibly add/subtract by angle
+
+    p1 = Position.new(start.x - offset_width, start.y - offset_height)
+    p2 = Position.new(terminal.x - offset_width, terminal.y - offset_height)
+    p3 = Position.new(terminal.x + offset_height, terminal.y + offset_height)
+    p4 = Position.new(start.x + offset_width, start.y + offset_height)
+
+    [
+      [p1, p2],
+      [p2, p3],
+      [p3, p4],
+      [p4, p1],
+    ]
   end
 
-  def intersect_segment_segment_fudge(start_1, end_1, start_2, end_2, fudge = 0.5)
+  def offset_line(start, terminal, width)
+    rectangle = segment_to_polygon(start, terminal, width)
+
+    [rectangle[0], rectangle[2]]
+  end
+
+  def intersect_segment_segment_width(start_1, end_1, start_2, end_2, fudge = 0.5)
      # verify we should bother with expensive check
-      if intersect_segment_circle(start_1, end_1, start_2, Game::Constants::MAX_SPEED * 2)
-        # expand lines to polygons with width
-        start_line = segment_to_polygon(start_1, end_1, fudge)
-        end_line = segment_to_polygon(start_2, end_2, fudge)
+    return false if start_1.squared_distance_to(start_2) > (Game::Constants::MAX_SPEED * 2 + start_1.radius + start_2.radius) ** 2
 
-        start_line.product(end_line).find do |line_a, line_b|
-          intersect_segment_segment(line_a[0], line_a[1], line_b[0], line_b[1])
-        end
+    # expand lines to polygons with width
+    start_line = segment_to_polygon(start_1, end_1, fudge)
+    end_line = offset_line(start_2, end_2, fudge)
 
-      end
-
-      false
+    start_line.product(end_line).find do |line_a, line_b|
+      intersect_segment_segment(line_a[0], line_a[1], line_b[0], line_b[1])
     end
-
   end
 
   def intersect_segment_segment(start_1, end_1, start_2, end_2)
