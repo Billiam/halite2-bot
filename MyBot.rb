@@ -110,7 +110,7 @@ while true
 
       closest_enemy_ships = nearby_entities & enemy_target.ships
       ship_command = closest_enemy_ships.select(&:docked?).lazy.map do |target_ship|
-        attack_point = ship.approach_closest_point(target_ship, Game::Constants::WEAPON_RADIUS + attack_fudge)
+        attack_point = ship.approach_closest_point(target_ship, Game::Constants::WEAPON_RADIUS)
         next :skip if attack_point.x == ship.x && attack_point.y == ship.y
 
         ship.navigate(attack_point, map, speed, max_corrections: 45, angular_step: 3)
