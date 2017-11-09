@@ -1,2 +1,2 @@
-require "rquad/vector"
-require "rquad/quadtree"
+require_relative "./rquad/vector"
+require_relative "./rquad/quadtree"
