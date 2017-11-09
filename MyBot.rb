@@ -15,7 +15,7 @@ require 'game'
 
 # Here we define the bot's name as Opportunity and initialize the game, including
 # communication with the Halite engine.
-game = Game.new("Cachier")
+game = Game.new("DefenseWeight")
 # We print our start message to the logs
 LOGGER = game.logger
 game.logger.info("Starting my Opportunity bot!")
@@ -136,10 +136,10 @@ while true
     unless ship_command
       # protec
       ship_command = (planets_by_distance & map.my_planets).select do |planet|
-        ship.squared_distance_to(planet) < (Game::Constants::MAX_SPEED * 6 + planet.radius) ** 2
+        ship.squared_distance_to(planet) < (Game::Constants::MAX_SPEED * 4 + planet.radius) ** 2
       end.map do |planet|
         # TODO: prevent dithering between close ships by including closest to attacking ship in consideration
-        planet.closest_enemies(map, Game::Constants::MAX_SPEED * 6 + planet.radius).map do |target_ship|
+        planet.closest_enemies(map, Game::Constants::MAX_SPEED * 4 + planet.radius).map do |target_ship|
           attack_point = ship.approach_closest_point(target_ship, 3)
           ship.navigate(attack_point, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
         end.find(&:itself)
