@@ -105,19 +105,6 @@ while true
     planets_by_distance = nearby_entities.select { |entity| entity.is_a? Planet }
 
     unless ship_command
-      # protec
-      ship_command = (planets_by_distance & map.my_planets).select do |planet|
-        ship.squared_distance_to(planet) < (Game::Constants::MAX_SPEED * 4 + planet.radius) ** 2
-      end.map do |planet|
-        # TODO: prevent dithering between close ships by including closest to attacking ship in consideration
-        planet.closest_enemies(map, Game::Constants::MAX_SPEED * 6 + planet.radius).map do |target_ship|
-          attack_point = ship.approach_closest_point(target_ship, 3)
-          ship.navigate(attack_point, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
-        end.find(&:itself)
-      end.find(&:itself)
-    end
-
-    unless ship_command
       enemy_target_id = assignments[ship.id]
       if enemy_target_id
         # assigned tasks
@@ -145,6 +132,19 @@ while true
 
         ship_command = :skip unless ship_command
       end
+    end
+
+    unless ship_command
+      # protec
+      ship_command = (planets_by_distance & map.my_planets).select do |planet|
+        ship.squared_distance_to(planet) < (Game::Constants::MAX_SPEED * 4 + planet.radius) ** 2
+      end.map do |planet|
+        # TODO: prevent dithering between close ships by including closest to attacking ship in consideration
+        planet.closest_enemies(map, Game::Constants::MAX_SPEED * 6 + planet.radius).map do |target_ship|
+          attack_point = ship.approach_closest_point(target_ship, 3)
+          ship.navigate(attack_point, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
+        end.find(&:itself)
+      end.find(&:itself)
     end
 
     unless ship_command
