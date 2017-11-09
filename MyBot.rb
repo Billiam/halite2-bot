@@ -81,7 +81,7 @@ while true
     max_distance = planet.radius + [planet.radius, Game::Constants::DOCK_RADIUS].max
     max_distance_squared = max_distance ** 2
 
-    targets = planet.enemies_by_distance.lazy.inject(0) do |count, (ship, distance)|
+    targets = planet.enemies_by_distance(map).lazy.inject(0) do |count, (ship, distance)|
       break count if distance > max_distance_squared
 
       explosion_damage = min_damage + ((Math.sqrt(distance) - planet.radius - ship.radius) / max_distance) * (max_damage - min_damage)
