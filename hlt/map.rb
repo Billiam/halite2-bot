@@ -3,6 +3,7 @@ require 'planet'
 require 'ship'
 require 'position'
 require 'helper/cache'
+require 'collider'
 
 # Map which houses the current game information/metadata.
 
@@ -69,7 +70,18 @@ class Map
     @planets, tokens = Planet::parse(tokens)
     raise if tokens.length != 0
     clear_cache
+    update_collider
     link
+  end
+
+  cache def collider
+    Collider.new(@width.to_i, @height.to_i)
+  end
+
+  def update_collider
+    (ships + planets).each do |entity|
+      collider.add(entity)
+    end
   end
 
   # Fetch all entities in relationship to the entered entity keyed by distance
