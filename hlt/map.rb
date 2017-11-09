@@ -2,6 +2,7 @@ require 'player'
 require 'planet'
 require 'ship'
 require 'position'
+require 'helper/cache'
 
 # Map which houses the current game information/metadata.
 
@@ -9,6 +10,7 @@ require 'position'
 # width: Map width
 # height: Map height
 class Map
+  extend Cache
   attr_reader :my_id, :width, :height
 
   def initialize(player_id, width, height)
@@ -25,7 +27,7 @@ class Map
     @players.values
   end
 
-  def enemy_players
+  cache def enemy_players
     players - [me]
   end
 
@@ -53,7 +55,7 @@ class Map
     @planets[id]
   end
 
-  def ships
+  cache def ships
     players.flat_map(&:ships)
   end
 
@@ -65,8 +67,8 @@ class Map
     tokens = input.split
     @players, tokens = Player::parse(tokens)
     @planets, tokens = Planet::parse(tokens)
-    @planet_defense = nil
     raise if tokens.length != 0
+    clear_cache
     link
   end
 
@@ -84,21 +86,21 @@ class Map
     result
   end
 
-  def planetary_defense
-    @planet_defense ||= begin
-      enemy_defenses = ships.reject {|ship| ship.owner == me || ship.docked? }
-      planets.map do |planet|
-        # number of enemy ships in area
-        defense = enemy_defenses.count do |enemy_ship|
-          planet.squared_distance_to(enemy_ship) <= (planet.radius + 5 + 4) ** 2
-        end
+  cache def planetary_defense
+    enemy_defenses = ships.reject {|ship| ship.owner == me || ship.docked? }
 
-        [planet, defense]
-      end.to_h
-    end
+
+    planets.map do |planet|
+      # number of enemy ships in area
+      defense = enemy_defenses.count do |enemy_ship|
+        planet.squared_distance_to(enemy_ship) <= (planet.radius + 5 + 4) ** 2
+      end
+
+      [planet, defense]
+    end.to_h
   end
 
-  def active_enemies
+  cache def active_enemies
     enemy_players.select {|player| player_active?(player) }
   end
 
@@ -110,15 +112,15 @@ class Map
     planets.select { |planet| planet.owner == player }
   end
 
-  def enemy_ships
+  cache def enemy_ships
     ships - me.ships
   end
 
-  def my_planets
+  cache def my_planets
     player_planets(me)
   end
 
-  def enemy_planets
+  cache def enemy_planets
     planets - my_planets
   end
 

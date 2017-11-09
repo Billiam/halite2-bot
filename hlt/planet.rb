@@ -1,4 +1,5 @@
 require 'entity'
+require 'helper/cache'
 
 # A planet on the game map.
 
@@ -11,6 +12,8 @@ require 'entity'
 # health: The planet's health.
 
 class Planet < Entity
+  extend Cache
+
   attr_reader :docking_spots, :health
 
   def initialize(id, x, y, hp, radius, docking_spots, owner, docked_ship_ids)
@@ -35,6 +38,22 @@ class Planet < Entity
     return [] unless owned?
 
     @docked_ships.values
+  end
+
+  cache def enemies_by_distance(map)
+    map.enemy_ships.reject(&:docked?).map do |ship|
+      [ship, squared_distance_to(ship)]
+    end.sort_by {|s| s[1] }
+  end
+
+  cache def closest_enemies(map, max_distance)
+    squared_distance = max_distance ** 2
+
+    enemies_by_distance(map).lazy.select do |ship_data|
+      ship_data[1] < squared_distance
+    end.map do |ship_data|
+      ship_data[0]
+    end
   end
 
   # Determines if the planet has an owner.

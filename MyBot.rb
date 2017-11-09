@@ -15,7 +15,7 @@ require 'game'
 
 # Here we define the bot's name as Opportunity and initialize the game, including
 # communication with the Halite engine.
-game = Game.new("Defender")
+game = Game.new("Cachier")
 # We print our start message to the logs
 LOGGER = game.logger
 game.logger.info("Starting my Opportunity bot!")
@@ -103,52 +103,47 @@ while true
     nearby_entities = map.entities_sorted_by_distance(ship)
     planets_by_distance = nearby_entities.select { |entity| entity.is_a? Planet }
 
-    enemy_target_id = assignments[ship.id]
-    if enemy_target_id
-      # assigned tasks
-      enemy_target = map.player(enemy_target_id)
+    unless ship_command
+      enemy_target_id = assignments[ship.id]
+      if enemy_target_id
+        # assigned tasks
+        enemy_target = map.player(enemy_target_id)
 
-      closest_enemy_ships = nearby_entities & enemy_target.ships
-      ship_command = closest_enemy_ships.select(&:docked?).lazy.map do |target_ship|
-        attack_point = ship.approach_closest_point(target_ship, Game::Constants::WEAPON_RADIUS)
-        next :skip if attack_point.x == ship.x && attack_point.y == ship.y
+        closest_enemy_ships = nearby_entities & enemy_target.ships
+        ship_command = closest_enemy_ships.select(&:docked?).lazy.map do |target_ship|
+          attack_point = ship.approach_closest_point(target_ship, Game::Constants::WEAPON_RADIUS)
+          next :skip if attack_point.x == ship.x && attack_point.y == ship.y
 
-        ship.navigate(attack_point, map, speed, max_corrections: 45, angular_step: 3)
-      end.find(&:itself)
+          ship.navigate(attack_point, map, speed, max_corrections: 45, angular_step: 3)
+        end.find(&:itself)
 
-      unless ship_command
-        stalked_ship = closest_enemy_ships.first
-        # no docked ships, follow enemy ships
-        if ship.squared_distance_to(stalked_ship) < 10 ** 2
-          # RUN!
-          game.logger.error("too close to ship, should retreat")
-        else
-          nav_point = ship.closest_point_to(stalked_ship, Game::Constants::MAX_SPEED + Game::Constants::WEAPON_RADIUS + Game::Constants::SHIP_RADIUS * 2)
-          ship_command = ship.navigate(nav_point, map, speed, max_corrections: 30, angular_step: 6)
+        unless ship_command
+          stalked_ship = closest_enemy_ships.first
+          # no docked ships, follow enemy ships
+          if ship.squared_distance_to(stalked_ship) < 10 ** 2
+            # RUN!
+            game.logger.error("too close to ship, should retreat")
+          else
+            nav_point = ship.closest_point_to(stalked_ship, Game::Constants::MAX_SPEED + Game::Constants::WEAPON_RADIUS + Game::Constants::SHIP_RADIUS * 2)
+            ship_command = ship.navigate(nav_point, map, speed, max_corrections: 30, angular_step: 6)
+          end
         end
-      end
 
-      ship_command = :skip unless ship_command
+        ship_command = :skip unless ship_command
+      end
     end
 
     unless ship_command
       # protec
-      active_enemies = map.enemy_ships.reject(&:docked?)
-
-      # TODO: cache per planet/turn
-      ship_command = planets_by_distance.lazy.select {|planet| planet.owner == map.me }.select do |planet|
+      ship_command = (planets_by_distance & map.my_planets).select do |planet|
         ship.squared_distance_to(planet) < (Game::Constants::MAX_SPEED * 6 + planet.radius) ** 2
       end.map do |planet|
         # TODO: prevent dithering between close ships by including closest to attacking ship in consideration
-        map.sort_closest(planet, active_enemies).lazy.select do |target_ship|
-          target_ship.squared_distance_to(planet) < (Game::Constants::MAX_SPEED * 6 + planet.radius) ** 2
-        end.map do |target_ship|
+        planet.closest_enemies(map, Game::Constants::MAX_SPEED * 6 + planet.radius).map do |target_ship|
           attack_point = ship.approach_closest_point(target_ship, 3)
           ship.navigate(attack_point, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
         end.find(&:itself)
       end.find(&:itself)
-
-      ship_command = nil if ship_command == :break
     end
 
     unless ship_command
@@ -174,7 +169,6 @@ while true
           next map.sort_closest(ship, target_planet.docked_ships).lazy.map do |target_ship|
             attack_point = ship.approach_closest_point(target_ship, Game::Constants::WEAPON_RADIUS + attack_fudge)
             # TODO: Try to attack only one
-            # TODO: Try to navigate to planet range
             ship.navigate(attack_point, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
           end.find(&:itself)
         end
