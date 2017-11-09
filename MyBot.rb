@@ -74,34 +74,25 @@ while true
     end
   end
 
-  min_damage = 0.5 * Game::Constants::MAX_SHIP_HEALTH
-  max_damage = 5 * Game::Constants::MAX_SHIP_HEALTH
-
-  explodable_planets = map.planets.map do |planet|
-    max_distance = planet.radius + [planet.radius, Game::Constants::DOCK_RADIUS].max
-    max_distance_squared = max_distance ** 2
-
-    targets = planet.enemies_by_distance(map).lazy.inject(0) do |count, (ship, distance)|
-      break count if distance > max_distance_squared
-
-      explosion_damage = min_damage + ((Math.sqrt(distance) - planet.radius - ship.radius) / max_distance) * (max_damage - min_damage)
-      next count if ship.health > explosion_damage
-      cost_modifier = ship.owner == map.me ? -1 : 1
-
-      count + (1 * cost_modifier)
-    end
-
-    expenditure = planet.health / Game::Constants::BASE_SHIP_HEALTH
-    expenditure += planet.docking_spots if planet.owner == map.me
-
-    value = targets - expenditure
-
-    [planet, value] if value > 3
-  end.compact.sort_by do |(_planet, value)|
-    -value
-  end.map do |(planet, _value)|
-    planet
-  end
+  # explodable_planets = map.planets.map do |planet|
+  #   kill_distance = planet.radius + [planet.radius, Game::Constants::DOCK_RADIUS].max * 0.8
+  #
+  #   targets = planet.closest_enemies(map, kill_distance).lazy.inject(0) do |count, ship|
+  #     cost_modifier = ship.owner == map.me ? -1 : 1
+  #     count + (1 * cost_modifier)
+  #   end
+  #
+  #   expenditure = (planet.health / Game::Constants::BASE_SHIP_HEALTH).ceil
+  #   expenditure += planet.docking_spots if planet.owner == map.me
+  #
+  #   value = targets - expenditure
+  #
+  #   [planet, value] if value > 3
+  # end.compact.sort_by do |(_planet, value)|
+  #   -value
+  # end.map do |(planet, _value)|
+  #   planet
+  # end
 
   # For each ship we control
   map.me.ships.each do |ship|
@@ -112,6 +103,19 @@ while true
     ship_command = nil
     nearby_entities = map.entities_sorted_by_distance(ship)
     planets_by_distance = nearby_entities.select { |entity| entity.is_a? Planet }
+
+    unless ship_command
+      # protec
+      ship_command = (planets_by_distance & map.my_planets).select do |planet|
+        ship.squared_distance_to(planet) < (Game::Constants::MAX_SPEED * 4 + planet.radius) ** 2
+      end.map do |planet|
+        # TODO: prevent dithering between close ships by including closest to attacking ship in consideration
+        planet.closest_enemies(map, Game::Constants::MAX_SPEED * 6 + planet.radius).map do |target_ship|
+          attack_point = ship.approach_closest_point(target_ship, 3)
+          ship.navigate(attack_point, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
+        end.find(&:itself)
+      end.find(&:itself)
+    end
 
     unless ship_command
       enemy_target_id = assignments[ship.id]
@@ -144,19 +148,6 @@ while true
     end
 
     unless ship_command
-      # protec
-      ship_command = (planets_by_distance & map.my_planets).select do |planet|
-        ship.squared_distance_to(planet) < (Game::Constants::MAX_SPEED * 4 + planet.radius) ** 2
-      end.map do |planet|
-        # TODO: prevent dithering between close ships by including closest to attacking ship in consideration
-        planet.closest_enemies(map, Game::Constants::MAX_SPEED * 6 + planet.radius).map do |target_ship|
-          attack_point = ship.approach_closest_point(target_ship, 3)
-          ship.navigate(attack_point, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
-        end.find(&:itself)
-      end.find(&:itself)
-    end
-
-    unless ship_command
       # reinforce
       non_full_planets = planets_by_distance.first(4).select {|planet| !planet.full? && [map.me, nil].include?(planet.owner) }
       ship_command = non_full_planets.lazy.map do |planet|
@@ -164,13 +155,13 @@ while true
       end.find(&:itself)
     end
 
-    unless ship_command
-      # bomb
-      ship_command = explodable_planets.lazy.map do |(planet, value)|
-        game.logger.info("#{ship.id} trying to attack #{planet[:planet].id}")
-        ship.navigate(planet[:planet], map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
-      end.find(&:itself)
-    end
+    # unless ship_command
+    #   # bomb
+    #   ship_command = explodable_planets.lazy.map do |(planet, value)|
+    #     game.logger.info("#{ship.id} trying to attack #{planet[:planet].id}")
+    #     ship.navigate(planet[:planet], map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
+    #   end.find(&:itself)
+    # end
 
     unless ship_command
       # conquer

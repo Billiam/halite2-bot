@@ -1,7 +1,9 @@
 require 'ship'
+require 'helper/cache'
 
 class Player
   attr_reader :id
+  extend Cache
 
   def initialize(player_id, ships = {})
     @ships = ships
@@ -16,16 +18,14 @@ class Player
     @ships[ship_id]
   end
 
-  def average_location
-    @average_location ||= begin
-      sum_coord = ships.inject({x: 0, y: 0}) do |av, ship|
-        av[:x] += ship.x
-        av[:y] += ship.y
-        av
-      end
-
-      { x: sum_coord[:x] / ships.size, y: sum_coord[:y] / ships.size }
+  cache def average_location
+    sum_coord = ships.inject({x: 0, y: 0}) do |av, ship|
+      av[:x] += ship.x
+      av[:y] += ship.y
+      av
     end
+
+    { x: sum_coord[:x] / ships.size, y: sum_coord[:y] / ships.size }
   end
 
   # Parse an entire user input string from the Halite engine for all users.
