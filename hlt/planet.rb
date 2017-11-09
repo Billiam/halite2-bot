@@ -43,16 +43,16 @@ class Planet < Entity
   cache def enemies_by_distance(map)
     map.enemy_ships.reject(&:docked?).map do |ship|
       [ship, squared_distance_to(ship)]
-    end.sort_by {|s| s[1] }
+    end.sort_by {|(_ship, distance)| distance }
   end
 
-  cache def closest_enemies(map, max_distance)
+  def closest_enemies(map, max_distance)
     squared_distance = max_distance ** 2
 
-    enemies_by_distance(map).lazy.select do |ship_data|
-      ship_data[1] < squared_distance
-    end.map do |ship_data|
-      ship_data[0]
+    enemies_by_distance(map).lazy.select do |(_ship, distance)|
+      distance < squared_distance
+    end.map do |(ship, _distance)|
+      ship
     end
   end
 

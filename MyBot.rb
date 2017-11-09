@@ -75,22 +75,33 @@ while true
     end
   end
 
+  min_damage = 0.5 * Game::Constants::MAX_SHIP_HEALTH
+  max_damage = 5 * Game::Constants::MAX_SHIP_HEALTH
+
   explodable_planets = map.planets.map do |planet|
-    explosion_radius = ([planet.radius, Game::Constants::DOCK_RADIUS].max + planet.radius + 0.5) ** 2
-    count = map.ships.inject(0) do |sum, ship|
-      in_radius = planet.squared_distance_to(ship) < explosion_radius
+    max_distance = planet.radius + [planet.radius, Game::Constants::DOCK_RADIUS].max
+    max_distance_squared = max_distance ** 2
+
+    targets = planet.enemies_by_distance.lazy.inject(0) do |count, (ship, distance)|
+      break count if distance > max_distance_squared
+
+      explosion_damage = min_damage + ((Math.sqrt(distance) - planet.radius - ship.radius) / max_distance) * (max_damage - min_damage)
+      next count if ship.health > explosion_damage
       cost_modifier = ship.owner == map.me ? -1 : 1
-      sum + cost_modifier * (in_radius ? 1 : 0)
+
+      count + (1 * cost_modifier)
     end
 
-    expending = planet.health / Game::Constants::BASE_SHIP_HEALTH
-    expending += planet.docking_spots if planet.owner == map.me
+    expenditure = planet.health / Game::Constants::BASE_SHIP_HEALTH
+    expenditure += planet.docking_spots if planet.owner == map.me
 
-    value = count - expending
+    value = targets - expenditure
 
-    { planet: planet, value: value } if value > 3
-  end.compact.sort_by do |data|
-    -data[:value]
+    [planet, value] if value > 3
+  end.compact.sort_by do |(_planet, value)|
+    -value
+  end.map do |(planet, _value)|
+    planet
   end
 
   # For each ship we control
@@ -156,7 +167,7 @@ while true
 
     unless ship_command
       # bomb
-      ship_command = explodable_planets.lazy.map do |planet|
+      ship_command = explodable_planets.lazy.map do |(planet, value)|
         game.logger.info("#{ship.id} trying to attack #{planet[:planet].id}")
         ship.navigate(planet[:planet], map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
       end.find(&:itself)
