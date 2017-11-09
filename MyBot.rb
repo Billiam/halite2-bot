@@ -11,6 +11,15 @@
 $:.unshift(File.dirname(__FILE__) + "/hlt")
 require 'game'
 
+at_exit do
+  e = $!
+
+  if e
+    File.open('errors.log', 'w') do |file|
+      file.puts "{e.backtrace.first}: #{e.message} (#{e.class})", e.backtrace.drop(1).map{|s| "\t#{s}"}
+    end
+  end
+end
 # GAME START
 
 # Here we define the bot's name as Opportunity and initialize the game, including
