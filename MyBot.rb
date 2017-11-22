@@ -151,7 +151,7 @@ while true
       # Pre-settlement check
       empty_planets = planets_by_distance.first(4).select {|planet| planet.owner.nil? }
       ship_command = empty_planets.lazy.map do |planet|
-        planet.closest_enemies(map, Game::Constants::MAX_SPEED * 6 + planet.radius).map do |target_ship|
+        planet.closest_enemies(map, Game::Constants::MAX_SPEED * 3 + planet.radius).map do |target_ship|
           attack_point = ship.approach_closest_point(target_ship, 3)
           ship.navigate(attack_point, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
         end.find(&:itself)
