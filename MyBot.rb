@@ -37,8 +37,7 @@ while true
   # update assignments
   assignments = assignments.select { |ship_id, player_id| map.ship(ship_id) && map.player_active?(map.player(player_id)) }
 
-  # game.logger.error(assignments.map {|k, v| "#{k} => #{v}"})
-  max_assignments = (map.me.ships.size / 2.0 - 0.5).floor
+  max_assignments = Math.log(map.me.ships.size, 2.4).floor
   if assignments.size < max_assignments
     active_enemies = map.active_enemies
 
