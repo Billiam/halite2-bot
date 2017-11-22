@@ -46,9 +46,14 @@ while true
 
       # TODO: pull into map method
       # TODO: Evaluate average vs median distances (find enemy core)
-      sorted_enemies = active_enemies.sort_by do |player|
+
+      sorted_enemies = active_enemies.map do |player|
         location = player.average_location
-        (location[:x] - self_location[:x])**2 + (location[:y] - self_location[:y])**2
+        [player, Math.sqrt((location[:x] - self_location[:x])**2 + (location[:y] - self_location[:y])**2)]
+      end.select do |(player, distance)|
+          distance < Game::Constants::MAX_SPEED * 12
+      end.map do |(player, distance)|
+        player
       end
 
       available_ships = map.me.ships.reject(&:docked?).reject {|ship| assignments.key?(ship.id) }
@@ -133,7 +138,6 @@ while true
       end
     end
 
-    # TODO: Don't dock if planet under threat
     unless ship_command
       # protec
       ship_command = (planets_by_distance & map.my_planets).select do |planet|
