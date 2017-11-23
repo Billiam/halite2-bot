@@ -29,6 +29,10 @@ game = Game.new("QuadTree")
 LOGGER = game.logger
 game.logger.info("Starting my Opportunity bot!")
 
+# TODO: extract:
+# Commander
+# Strategies
+
 speed = Game::Constants::MAX_SPEED
 assignments = {}
 attack_fudge = 0.25
@@ -46,38 +50,30 @@ while true
   # update assignments
   assignments = assignments.select { |ship_id, player_id| map.ship(ship_id) && map.player_active?(map.player(player_id)) }
 
-  # game.logger.error(assignments.map {|k, v| "#{k} => #{v}"})
-  max_assignments = (map.me.ships.size / 2.0 - 0.5).floor
+  active_enemies = map.active_enemies
+  active_enemy_ids = active_enemies.map(&:id)
+
+  # Remove inactive enemies from assignments
+  assignments.keep_if do |_ship_id, enemy_id|
+    active_enemy_ids.include?(enemy_id)
+  end
+
+  max_assignments = [(map.me.ships.size / 2.0 - 0.5).floor, active_enemies.size].min
   if assignments.size < max_assignments
-    active_enemies = map.active_enemies
 
-    if active_enemies.size > assignments.size
-      self_location = map.me.average_location
+    available_ships = map.me.ships.reject(&:docked?).reject {|ship| assignments.key?(ship.id) }
+    available_ships.each do |ship|
+      target = map.enemy_ships_in_range(ship, Game::Constants::MAX_SPEED * 9).find do |nearby_ship|
+        next if assignments.value?(nearby_ship.owner.id)
 
-      # TODO: pull into map method
-      # TODO: Evaluate average vs median distances (find enemy core)
-      sorted_enemies = active_enemies.sort_by do |player|
-        location = player.average_location
-        (location[:x] - self_location[:x])**2 + (location[:y] - self_location[:y])**2
+        true
       end
-
-      available_ships = map.me.ships.reject(&:docked?).reject {|ship| assignments.key?(ship.id) }
-
-      sorted_enemies.each do |enemy|
-        # If ship already assigned to a player
-        unless assignments.value?(enemy.id)
-          # find a ship without an assignment
-          available_ship = available_ships.shift
-          break unless available_ship
-
-          assignments[available_ship.id] = enemy.id
-          break if assignments.size >= max_assignments
-        end
-      end
+      next unless target
+      assignments[ship.id] = target.owner.id
+      break if assignments.size >= max_assignments
     end
   else
-    game.logger.info("Unassigning ships")
-
+    # Remove extra assignments
     while assignments.size > [0, max_assignments].max do
       assignments.delete(assignments.keys.last)
     end
@@ -113,10 +109,23 @@ while true
     nearby_entities = map.entities_sorted_by_distance(ship)
     planets_by_distance = nearby_entities.select { |entity| entity.is_a? Planet }
 
+    # Planet Defense
+    unless ship_command
+      ship_command = (planets_by_distance & map.my_planets).select do |planet|
+        ship.squared_distance_to(planet) < (Game::Constants::MAX_SPEED * 4 + planet.radius) ** 2
+      end.map do |planet|
+        # TODO: prevent dithering between close ships by including closest to attacking ship in consideration
+        planet.closest_enemies(map, Game::Constants::MAX_SPEED * 6 + planet.radius).map do |target_ship|
+          attack_point = ship.approach_closest_point(target_ship, 3)
+          ship.navigate(attack_point, map, speed, max_corrections: 18, ignore_ships: true, ignore_my_ships: false)
+        end.find(&:itself)
+      end.find(&:itself)
+    end
+
+    # Task Assignment
     unless ship_command
       enemy_target_id = assignments[ship.id]
       if enemy_target_id
-        # assigned tasks
         enemy_target = map.player(enemy_target_id)
 
         closest_enemy_ships = nearby_entities & enemy_target.ships
@@ -124,7 +133,7 @@ while true
           attack_point = ship.approach_closest_point(target_ship, Game::Constants::WEAPON_RADIUS)
           next :skip if attack_point.x == ship.x && attack_point.y == ship.y
 
-          ship.navigate(attack_point, map, speed, max_corrections: 45, angular_step: 3)
+          ship.navigate(attack_point, map, speed, max_corrections: 18)
         end.find(&:itself)
 
         unless ship_command
@@ -135,7 +144,7 @@ while true
             game.logger.error("too close to ship, should retreat")
           else
             nav_point = ship.closest_point_to(stalked_ship, Game::Constants::MAX_SPEED + Game::Constants::WEAPON_RADIUS + Game::Constants::SHIP_RADIUS * 2)
-            ship_command = ship.navigate(nav_point, map, speed, max_corrections: 30, angular_step: 6)
+            ship_command = ship.navigate(nav_point, map, speed, max_corrections: 18)
           end
         end
 
@@ -143,21 +152,8 @@ while true
       end
     end
 
+    # Reinforce and Settle
     unless ship_command
-      # protec
-      ship_command = (planets_by_distance & map.my_planets).select do |planet|
-        ship.squared_distance_to(planet) < (Game::Constants::MAX_SPEED * 4 + planet.radius) ** 2
-      end.map do |planet|
-        # TODO: prevent dithering between close ships by including closest to attacking ship in consideration
-        planet.closest_enemies(map, Game::Constants::MAX_SPEED * 6 + planet.radius).map do |target_ship|
-          attack_point = ship.approach_closest_point(target_ship, 3)
-          ship.navigate(attack_point, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
-        end.find(&:itself)
-      end.find(&:itself)
-    end
-
-    unless ship_command
-      # reinforce
       non_full_planets = planets_by_distance.first(4).select {|planet| !planet.full? && [map.me, nil].include?(planet.owner) }
       ship_command = non_full_planets.lazy.map do |planet|
         ship.dock(planet) if ship.can_dock?(planet)
@@ -172,19 +168,19 @@ while true
     #   end.find(&:itself)
     # end
 
+    # Conquer
     unless ship_command
-      # conquer
       ship_command = map.target_planets_by_weight(ship, distance: 1, defense: -1.5).lazy.map do |target_planet|
         if target_planet.owned?
           next map.sort_closest(ship, target_planet.docked_ships).lazy.map do |target_ship|
             attack_point = ship.approach_closest_point(target_ship, Game::Constants::WEAPON_RADIUS + attack_fudge)
             # TODO: Try to attack only one
-            ship.navigate(attack_point, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
+            ship.navigate(attack_point, map, speed, max_corrections: 18, ignore_ships: true, ignore_my_ships: false)
           end.find(&:itself)
         end
 
         docking_position = ship.approach_closest_point(target_planet, Game::Constants::DOCK_RADIUS)
-        ship.navigate(docking_position, map, speed, max_corrections: 30, angular_step: 3)
+        ship.navigate(docking_position, map, speed, max_corrections: 18)
       end.find(&:itself)
     end
 

@@ -98,6 +98,22 @@ class Map
     result
   end
 
+  def entities_in_range(entity, radius)
+    collider.nearby(entity, radius)
+  end
+
+  def ships_in_range(entity, radius)
+    entities_in_range(entity, radius).select do |nearby_entity|
+      nearby_entity.is_a? Ship
+    end
+  end
+
+  def enemy_ships_in_range(entity, radius)
+    ships_in_range(entity, radius).reject do |nearby_entity|
+      nearby_entity.owner == me
+    end
+  end
+
   cache def planetary_defense
     enemy_defenses = ships.reject {|ship| ship.owner == me || ship.docked? }
 
