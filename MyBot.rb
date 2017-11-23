@@ -50,11 +50,9 @@ while true
       sorted_enemies = active_enemies.map do |player|
         location = player.average_location
         [player, Math.sqrt((location[:x] - self_location[:x])**2 + (location[:y] - self_location[:y])**2)]
-      end.select do |(player, distance)|
-          distance < Game::Constants::MAX_SPEED * 12
       end.map do |(player, distance)|
-        player
-      end
+        player if distance < Game::Constants::MAX_SPEED * 19
+      end.compact
 
       available_ships = map.me.ships.reject(&:docked?).reject {|ship| assignments.key?(ship.id) }
 
