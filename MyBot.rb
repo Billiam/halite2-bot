@@ -16,7 +16,7 @@ at_exit do
 
   if e
     File.open('errors.log', 'w') do |file|
-      file.puts "{e.backtrace.first}: #{e.message} (#{e.class})", e.backtrace.drop(1).map{|s| "\t#{s}"}
+      file.puts "#{e.backtrace.first}: #{e.message} (#{e.class})", e.backtrace.drop(1).map{|s| "\t#{s}"}
     end
   end
 end
@@ -24,7 +24,7 @@ end
 
 # Here we define the bot's name as Opportunity and initialize the game, including
 # communication with the Halite engine.
-game = Game.new("ExplosionCost")
+game = Game.new("QuadTree")
 # We print our start message to the logs
 LOGGER = game.logger
 game.logger.info("Starting my Opportunity bot!")
