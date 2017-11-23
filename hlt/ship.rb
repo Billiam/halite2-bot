@@ -127,7 +127,7 @@ class Ship < Entity
       return navigate(new_target, map, speed,
                       avoid_obstacles: true,
                       max_corrections: max_corrections-1,
-                      angular_step: angular_step)
+                      angular_step: angular_step + 0.5)
     end
     speed = [distance.ceil, speed].min
     LOGGER.error("#{self.id} → #{distance}, #{speed}")

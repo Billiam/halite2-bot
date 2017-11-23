@@ -65,7 +65,8 @@ class Game
   private
 
   def set_up_logging(player_id)
-    Logger.new("#{player_id}_#{name}.log").tap do |l|
+    file = File.open("#{player_id}_#{name}.log", File::WRONLY | File::APPEND | File::CREAT | File::TRUNC)
+    Logger.new(file).tap do |l|
       l.formatter = proc do |severity, datetime, progname, msg|
         "#{datetime.strftime("%m-%d %H:%M:%S.%3N")} - #{severity} - #{msg}\n"
       end
