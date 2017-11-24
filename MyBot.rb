@@ -139,34 +139,27 @@ while true
         unless ship_command
           stalked_ship = closest_enemy_ships.first
           # no docked ships, follow enemy ships
-          if ship.squared_distance_to(stalked_ship) < 10 ** 2
-            # RUN!
-            game.logger.error("too close to ship, should retreat")
-          else
-            nav_point = ship.closest_point_to(stalked_ship, Game::Constants::MAX_SPEED + Game::Constants::WEAPON_RADIUS + Game::Constants::SHIP_RADIUS * 2)
-            ship_command = ship.navigate(nav_point, map, speed, max_corrections: 18)
-          end
+          nav_point = ship.closest_point_to(stalked_ship, Game::Constants::MAX_SPEED * 2)
+          ship_command = ship.navigate(nav_point, map, speed, max_corrections: 18)
         end
 
         ship_command = :skip unless ship_command
       end
     end
 
-    # Pre-Settlement checks
-    unless ship_command
-      empty_planets = planets_by_distance.first(4).select {|planet| planet.owner.nil? }
-      ship_command = empty_planets.lazy.map do |planet|
-        planet.closest_enemies(map, Game::Constants::MAX_SPEED * 3 + planet.radius).map do |target_ship|
-          attack_point = ship.approach_closest_point(target_ship, 3)
-          ship.navigate(attack_point, map, speed, max_corrections: 30, angular_step: 3, ignore_ships: true, ignore_my_ships: false)
-        end.find(&:itself)
-      end.find(&:itself)
-    end
-
     # Reinforce and Settle
     unless ship_command
-      non_full_planets = planets_by_distance.first(4).select {|planet| !planet.full? && [map.me, nil].include?(planet.owner) }
+      non_full_planets = planets_by_distance.select {|planet| !planet.full? && [map.me, nil].include?(planet.owner) }.first(4)
       ship_command = non_full_planets.lazy.map do |planet|
+        next if ship.squared_distance_to(planet) > (planet.radius + Game::Constants::MAX_SPEED * 2) ** 2
+
+        defend_planet = planet.closest_enemies(map, Game::Constants::MAX_SPEED * 3 + planet.radius).map do |target_ship|
+          attack_point = ship.approach_closest_point(target_ship, 3)
+          ship.navigate(attack_point, map, speed, max_corrections: 18, ignore_ships: true, ignore_my_ships: false)
+        end.find(&:itself)
+
+        next defend_planet if defend_planet
+
         ship.dock(planet) if ship.can_dock?(planet)
       end.find(&:itself)
     end
@@ -181,16 +174,15 @@ while true
 
     # Conquer
     unless ship_command
-      ship_command = map.target_planets_by_weight(ship, distance: 1, defense: -1.5).lazy.map do |target_planet|
-        if target_planet.owned?
-          next map.sort_closest(ship, target_planet.docked_ships).lazy.map do |target_ship|
+      ship_command = map.target_planets_by_weight(ship, distance: 1, defense: 0).lazy.map do |planet|
+        if planet.owned?
+          next map.sort_closest(ship, planet.docked_ships).lazy.map do |target_ship|
             attack_point = ship.approach_closest_point(target_ship, Game::Constants::WEAPON_RADIUS + attack_fudge)
-            # TODO: Try to attack only one
             ship.navigate(attack_point, map, speed, max_corrections: 18, ignore_ships: true, ignore_my_ships: false)
           end.find(&:itself)
         end
 
-        docking_position = ship.approach_closest_point(target_planet, Game::Constants::DOCK_RADIUS)
+        docking_position = ship.approach_closest_point(planet, Game::Constants::DOCK_RADIUS)
         ship.navigate(docking_position, map, speed, max_corrections: 18)
       end.find(&:itself)
     end
