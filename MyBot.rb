@@ -174,7 +174,7 @@ while true
 
     # Conquer
     unless ship_command
-      ship_command = map.target_planets_by_weight(ship, distance: 1, defense: 0).lazy.map do |planet|
+      ship_command = map.target_planets_by_weight(ship, distance: 1, defense: -1.5).lazy.map do |planet|
         if planet.owned?
           next map.sort_closest(ship, planet.docked_ships).lazy.map do |target_ship|
             attack_point = ship.approach_closest_point(target_ship, Game::Constants::WEAPON_RADIUS + attack_fudge)
