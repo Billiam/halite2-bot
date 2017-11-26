@@ -19,14 +19,25 @@ class Vector < Position
   end
 
   def +(other)
+    output_klass(other).new(x + other.x, y + other.y)
+  end
+
+  def -(other)
+    output_klass(other).new(x - other.x, y - other.y)
+  end
+
+  def to_s
+    "Vector: (#{x}, #{y}) a: #{@angle * (180/Math::PI)} m: #{@magnitude}"
+  end
+
+  private
+  def output_klass(other)
     if other.is_a?(Vector)
-      klass = Vector
+      Vector
     elsif other.respond_to?(:x) && other.respond_to?(:y)
-      klass = Position
+      Position
     else
       raise NotImplementedError("Vector cannot be added to #{other.class}")
     end
-
-    klass.new(other.x + x, other.y + y)
   end
 end

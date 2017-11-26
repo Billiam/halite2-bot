@@ -186,16 +186,27 @@ class Map
     entities.concat(ships) unless ignore.include?(:ships)
     entities.concat(me.ships) if !ignore.include?(:my_ships) && ignore.include?(:ships)
 
+    target_distance= ship.calculate_distance_between(target)
+    short_vector = nil
+
+    # LOGGER.error("#{ship.id} heading to (#{target.x}, #{target.y})") if [0,1].include?(ship.id)
+
     entities.find do |foreign_entity|
       next if foreign_entity == ship || foreign_entity == target
 
       fudge = ship.radius * 2
 
       if foreign_entity.traveling?
-        next true if intersect_segment_segment_width(ship, target, foreign_entity, foreign_entity.next_position, fudge)
+        # Ignore distant collisions before calculating moving circles
+        # Floor thrust angle to match actual thrust limits
+        thrust_angle = Integer(ship.calculate_angle_between(target))
+        short_vector ||= Vector.from_angle(thrust_angle, [target_distance, Game::Constants::MAX_SPEED].min)
+
+        next false if ship.squared_distance_to(foreign_entity) > (Game::Constants::MAX_SPEED * 2) ** 2
+        next true if intersect_moving_circle?(ship, short_vector, foreign_entity, foreign_entity.vector)
       end
 
-      next true if intersect_segment_circle(ship, target, foreign_entity, fudge)
+      next true if intersect_segment_circle?(ship, target, foreign_entity, fudge)
 
       false
     end
@@ -210,6 +221,43 @@ class Map
     end
   end
 
+  def distance_to_line2(start_1, end_1, target)
+    line_length2 = start_1.squared_distance_to(end_1)
+
+    # Line is zero length, so distance is from any point on line
+    return start_1.squared_distance_to(target) if line_length2 == 0
+
+    t = ((target.x - start_1.x) * (end_1.x - start_1.x) + (target.y - start_1.y) * (end_1.y - start_1.y)) / line_length2
+    # clamp to 0 - 1
+    t = [0, [1, t].min].max
+
+    closest_point = {
+      x: start_1.x + t * (end_1.x - start_1.x),
+      y: start_1.y + t * (end_1.y - start_1.y)
+    }
+
+    # if [start_1.id, target.id].sort == [0,1]
+    #   LOGGER.error({id: start_1.id, start: {x: start_1.x, y: start_1.y}, end: {x: end_1.x, y: end_1.y}, target: {x: target.x, y: target.y}, closest: closest_point, t: t}.inspect)
+    #   LOGGER.error([target.x - closest_point[:x], target.y - closest_point[:y]].inspect)
+    #   LOGGER.error("Distance: #{ (target.x - closest_point[:x]) ** 2 + (target.y - closest_point[:y]) ** 2}")
+    #   LOGGER.error("Distance to beat: #{(start_1.radius + target.radius) ** 2}")
+    # end
+    (target.x - closest_point[:x]) ** 2 + (target.y - closest_point[:y]) ** 2
+  end
+
+  def intersect_moving_circle?(entity_1, vector_1, entity_2, vector_2, fudge = 0.1)
+    # combine vectors to create single moving circle
+    if [entity_1.id, entity_2.id].sort == [0,1]
+      e1_end = vector_1 + entity_1
+      e2_end = vector_2 + entity_2
+
+      # LOGGER.error({e1: {x: entity_1.x, y: entity_1.y}, e1_end: {x: e1_end.x, y: e1_end.y}, e2: {x: entity_2.x, y: entity_2.y}, e2_end: {x: e2_end.x, y: e2_end.y}})
+    end
+    combined_vector = vector_1 - vector_2
+
+    distance_to_line2(entity_1, combined_vector + entity_1, entity_2) < (entity_1.radius + entity_2.radius + fudge) ** 2
+  end
+
   # Test whether a line segment and circle intersect.
   # alpha: The start of the line segment. (Needs x, y attributes)
   # omega: The end of the line segment. (Needs x, y attributes)
@@ -217,7 +265,7 @@ class Map
   # fudge: A fudge factor; additional distance to leave between the segment and circle.
   #        (Probably set this to the ship radius, 0.5.)
   # return: True if intersects, False otherwise
-  def intersect_segment_circle(alpha, omega, circle, fudge=0.5)
+  def intersect_segment_circle?(alpha, omega, circle, fudge=0.5)
     dx = omega.x - alpha.x
     dy = omega.y - alpha.y
 
@@ -242,97 +290,8 @@ class Map
     closest_y = alpha.y + dy * t
     squared_closest_distance = Position.new(closest_x, closest_y).squared_distance_to(circle)
 
+    # LOGGER.error("checking collision: #{squared_closest_distance}") if [alpha.id, circle.id].sort == [0,1]
+
     squared_closest_distance <= (circle.radius + fudge) ** 2
-  end
-
-  def position_equal?(a, b)
-    a.x == b.x && a.y == b.y
-  end
-
-  def segment_to_polygon(start, terminal, width)
-    line_angle = start.calculate_angle_between(terminal)
-
-    width_angle = line_angle - 90
-
-    offset_height = Math.sin(width_angle) * width/2
-    offset_width = Math.cos(width_angle) * width/2
-
-    # TODO: possibly sort start/terminal lines.
-    # Possibly add/subtract by angle
-
-    p1 = Position.new(start.x - offset_width, start.y - offset_height)
-    p2 = Position.new(terminal.x - offset_width, terminal.y - offset_height)
-    p3 = Position.new(terminal.x + offset_height, terminal.y + offset_height)
-    p4 = Position.new(start.x + offset_width, start.y + offset_height)
-
-    [
-      [p1, p2],
-      [p2, p3],
-      [p3, p4],
-      [p4, p1],
-    ]
-  end
-
-  def offset_line(start, terminal, width)
-    rectangle = segment_to_polygon(start, terminal, width)
-
-    [rectangle[0], rectangle[2]]
-  end
-
-  def intersect_segment_segment_width(start_1, end_1, start_2, end_2, fudge = 0.5)
-     # verify we should bother with expensive check
-    return false if start_1.squared_distance_to(start_2) > (Game::Constants::MAX_SPEED * 2 + start_1.radius + start_2.radius) ** 2
-
-    # expand lines to polygons with width
-    start_line = segment_to_polygon(start_1, end_1, fudge)
-    end_line = offset_line(start_2, end_2, fudge)
-
-    start_line.product(end_line).find do |line_a, line_b|
-      intersect_segment_segment(line_a[0], line_a[1], line_b[0], line_b[1])
-    end
-  end
-
-  def intersect_segment_segment(start_1, end_1, start_2, end_2)
-    rx = end_1.x - start_1.x
-    ry = end_1.y - start_1.y
-
-    sx = end_2.x - start_2.x
-    sy = end_2.y - start_2.y
-
-    tx = start_2.x - start_1.x
-    ty = start_2.y - start_1.y
-
-    # cross products
-    u_numerator = tx * ry - ty * rx
-    denominator = rx * sy - ry * sx
-
-    if u_numerator == 0 && denominator == 0
-      # lines are collinear
-      if position_equal?(start_1, start_2) || position_equal?(start_1, end_2) || position_equal?(end_1, start_2) || position_equal?(end_1, end_2)
-        return true
-      end
-
-      # Do they overlap? (Are all the point differences in either direction the same sign)
-      return [
-        start_2.x - start_1.x,
-        start_2.x - end_1.x,
-        end_2.x - start_1.x,
-        end_2.x - end_2.x
-      ].all? {|i| i < 0} ||
-      [
-        start_2.y - start_1.y,
-        start_2.y - end_1.y,
-        end_2.y - start_1.y,
-        end_2.y - end_1.y
-      ].all? {|i| i < 0 }
-    end
-
-    # lines are parallel
-    return false if denominator == 0
-
-    u = u_numerator / denominator
-    t = (tx * sy - ty * sx) / denominator
-
-    t.between?(0, 1) && u.between?(0, 1)
   end
 end

@@ -22,7 +22,7 @@ class Ship < Entity
     ALL = [UNDOCKED, DOCKING, DOCKED, UNDOCKING].freeze
   end
 
-  attr_reader :health, :docking_status, :planet
+  attr_reader :health, :docking_status, :planet, :vector
 
   def initialize(player_id, ship_id, x, y, hp, status, progress, planet_id)
     @id = ship_id
@@ -53,10 +53,15 @@ class Ship < Entity
   # angle: The angle to move the ship in. Should always be a positive number, but %360 fixes that.
   # return: The command string to be passed to the Halite engine.
   def thrust(magnitude, angle)
+    raise "Ship should not thrust twice" if @has_thrust
+    @has_thrust = true
+
     thrust_angle = Integer(angle % 360)
     thrust_magnitude = Integer(magnitude)
-    @vector = Vector.from_angle(thrust_angle, thrust_magnitude)
 
+    return :skip if thrust_magnitude == 0
+
+    @vector = Vector.from_angle(thrust_angle, thrust_magnitude)
     "t #{id} #{thrust_magnitude} #{thrust_angle}"
   end
 
@@ -130,7 +135,6 @@ class Ship < Entity
                       angular_step: angular_step + 0.5)
     end
     speed = [distance.ceil, speed].min
-    LOGGER.error("#{self.id} → #{distance}, #{speed}")
     thrust(speed, angle)
   end
 

@@ -24,14 +24,14 @@ end
 
 # Here we define the bot's name as Opportunity and initialize the game, including
 # communication with the Halite engine.
-game = Game.new("QuadTree")
+game = Game.new("CircleSweep")
 # We print our start message to the logs
 LOGGER = game.logger
-game.logger.info("Starting my Opportunity bot!")
 
 # TODO: extract:
 # Commander
 # Strategies
+expected = {}
 
 speed = Game::Constants::MAX_SPEED
 assignments = {}
@@ -101,6 +101,16 @@ while true
 
   # For each ship we control
   map.me.ships.each do |ship|
+    # if expected[ship.id]
+    #   ex = expected[ship.id]
+    #   diff_x = ship.x - ex[:x]
+    #   diff_y = ship.y - ex[:y]
+    #   if diff_x > 0.0001 || diff_y > 0.0001
+    #     LOGGER.info("id: #{ship.id} x: #{diff_x.round(4)} y: #{diff_y.round(4)} v: #{ex[:v]}")
+    #   end
+    #   expected.delete(ship.id)
+    # end
+
     # skip if the ship is docked
     next if ship.docked?
     next if Time.now - start_time > 1.6
@@ -113,7 +123,7 @@ while true
     unless ship_command
       ship_command = (planets_by_distance & map.my_planets).select do |planet|
         ship.squared_distance_to(planet) < (Game::Constants::MAX_SPEED * 4 + planet.radius) ** 2
-      end.map do |planet|
+      end.lazy.map do |planet|
         # TODO: prevent dithering between close ships by including closest to attacking ship in consideration
         planet.closest_enemies(map, Game::Constants::MAX_SPEED * 6 + planet.radius).map do |target_ship|
           attack_point = ship.approach_closest_point(target_ship, 3)
@@ -186,6 +196,9 @@ while true
         ship.navigate(docking_position, map, speed, max_corrections: 18)
       end.find(&:itself)
     end
+
+    # ex = ship.vector + ship
+    # expected[ship.id] = {x: ex.x, y: ex.y, v: ship.vector}
 
     command_queue << ship_command if ship_command && ship_command != :skip
   end
