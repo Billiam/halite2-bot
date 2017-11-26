@@ -113,14 +113,24 @@ class Ship < Entity
   #                 want to crash onto planets)
   # return: The command trying to be passed to the Halite engine or nil if
   #         movement is not possible within max_corrections degrees.
-  def navigate(target, map, speed, avoid_obstacles: true, max_corrections: 90,
-              angular_step: 1, ignore_ships: false, ignore_planets: false, ignore_my_ships: false)
+  def navigate(target,
+      map,
+      speed,
+      avoid_obstacles: true,
+      max_corrections: 90,
+      angular_step: 1,
+      ignore_ships: false,
+      ignore_planets: false,
+      ignore_my_ships: false,
+      ignore_low_value: false
+  )
     return if max_corrections <= 0
     distance = calculate_distance_between(target)
     angle = calculate_angle_between(target)
 
     ignore = []
     ignore << :ships if ignore_ships
+    ignore << :low_value if ignore_low_value
     ignore << :planets if ignore_planets
     ignore << :my_ships if ignore_my_ships
 
@@ -129,11 +139,21 @@ class Ship < Entity
       new_target_dx = Math.cos(delta_radians) * distance
       new_target_dy = Math.sin(delta_radians) * distance
       new_target = Position.new(x + new_target_dx, y + new_target_dy)
-      return navigate(new_target, map, speed,
-                      avoid_obstacles: true,
-                      max_corrections: max_corrections-1,
-                      angular_step: angular_step + 0.5)
+
+      return navigate(
+        new_target,
+        map,
+        speed,
+        avoid_obstacles: true,
+        max_corrections: max_corrections-1,
+        angular_step: angular_step + 0.5,
+        ignore_ships: ignore_ships,
+        ignore_planets: ignore_planets,
+        ignore_my_ships: ignore_my_ships,
+        ignore_low_value: ignore_low_value
+      )
     end
+
     speed = [distance.ceil, speed].min
     thrust(speed, angle)
   end

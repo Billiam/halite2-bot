@@ -24,7 +24,7 @@ end
 
 # Here we define the bot's name as Opportunity and initialize the game, including
 # communication with the Halite engine.
-game = Game.new("CircleSweep")
+game = Game.new("ShipTargetting")
 # We print our start message to the logs
 LOGGER = game.logger
 
@@ -126,8 +126,8 @@ while true
       end.lazy.map do |planet|
         # TODO: prevent dithering between close ships by including closest to attacking ship in consideration
         planet.closest_enemies(map, Game::Constants::MAX_SPEED * 6 + planet.radius).map do |target_ship|
-          attack_point = ship.approach_closest_point(target_ship, 3)
-          ship.navigate(attack_point, map, speed, max_corrections: 18, ignore_ships: true, ignore_my_ships: false)
+          attack_point = ship.approach_attack(target_ship)
+          ship.navigate(attack_point, map, speed, max_corrections: 18, ignore_ships: true, ignore_my_ships: false, ignore_low_value: false)
         end.find(&:itself)
       end.find(&:itself)
     end
@@ -140,9 +140,7 @@ while true
 
         closest_enemy_ships = nearby_entities & enemy_target.ships
         ship_command = closest_enemy_ships.select(&:docked?).lazy.map do |target_ship|
-          attack_point = ship.approach_closest_point(target_ship, Game::Constants::WEAPON_RADIUS)
-          next :skip if attack_point.x == ship.x && attack_point.y == ship.y
-
+          attack_point = ship.approach_attack(target_ship)
           ship.navigate(attack_point, map, speed, max_corrections: 18)
         end.find(&:itself)
 
@@ -163,9 +161,10 @@ while true
       ship_command = non_full_planets.lazy.map do |planet|
         next if ship.squared_distance_to(planet) > (planet.radius + Game::Constants::MAX_SPEED * 2) ** 2
 
-        defend_planet = planet.closest_enemies(map, Game::Constants::MAX_SPEED * 3 + planet.radius).map do |target_ship|
-          attack_point = ship.approach_closest_point(target_ship, 3)
-          ship.navigate(attack_point, map, speed, max_corrections: 18, ignore_ships: true, ignore_my_ships: false)
+        defend_planet = planet.closest_enemies(map, Game::Constants::MAX_SPEED * 3 + planet.radius).reject(&:docked?).map do |target_ship|
+          attack_point = ship.approach_attack(target_ship)
+
+          ship.navigate(attack_point, map, speed, max_corrections: 18, ignore_ships: true, ignore_my_ships: false, ignore_low_value: false)
         end.find(&:itself)
 
         next defend_planet if defend_planet
@@ -188,12 +187,12 @@ while true
         if planet.owned?
           next map.sort_closest(ship, planet.docked_ships).lazy.map do |target_ship|
             attack_point = ship.approach_closest_point(target_ship, Game::Constants::WEAPON_RADIUS + attack_fudge)
-            ship.navigate(attack_point, map, speed, max_corrections: 18, ignore_ships: true, ignore_my_ships: false)
+            ship.navigate(attack_point, map, speed, max_corrections: 18, ignore_ships: true, ignore_my_ships: false, ignore_low_value: false)
           end.find(&:itself)
         end
 
         docking_position = ship.approach_closest_point(planet, Game::Constants::DOCK_RADIUS)
-        ship.navigate(docking_position, map, speed, max_corrections: 18)
+        ship.navigate(docking_position, map, speed, max_corrections: 18, ignore_ships: true, ignore_my_ships: false, ignore_low_value: false)
       end.find(&:itself)
     end
 

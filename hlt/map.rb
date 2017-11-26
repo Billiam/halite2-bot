@@ -49,6 +49,12 @@ class Map
     @planets.values
   end
 
+  def low_value_ships(ship)
+    enemy_ships.select do |enemy_ship|
+      enemy_ship.docked? || enemy_ship.health < ship.health + 128
+    end
+  end
+
   # Fetch a planet by ID
   # id: the ID of the desired planet
   # return: a Planet
@@ -184,7 +190,11 @@ class Map
     entities = []
     entities.concat(planets) unless ignore.include?(:planets)
     entities.concat(ships) unless ignore.include?(:ships)
-    entities.concat(me.ships) if !ignore.include?(:my_ships) && ignore.include?(:ships)
+
+    if ignore.include?(:ships)
+      entities.concat(low_value_ships(ship)) unless ignore.include?(:low_value)
+      entities.concat(me.ships) unless ignore.include?(:my_ships)
+    end
 
     target_distance= ship.calculate_distance_between(target)
     short_vector = nil

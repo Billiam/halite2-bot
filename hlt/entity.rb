@@ -56,6 +56,14 @@ class Entity
     Position.new(x, y)
   end
 
+  def approach_attack(target)
+    if target.health >= health + 128
+      return target
+    end
+
+    approach_closest_point(target, 3)
+  end
+
   def approach_closest_point(target, min_distance=3)
     pos = closest_point_to(target, min_distance)
     distance_to_new_position = squared_distance_to(pos)
