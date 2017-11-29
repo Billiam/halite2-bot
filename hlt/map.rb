@@ -20,7 +20,6 @@ class Map
     @height = height
     @players = {}
     @planets = {}
-    @planet_defense = {}
   end
 
   # return: Array of all players
@@ -105,7 +104,7 @@ class Map
   end
 
   def entities_in_range(entity, radius)
-    collider.nearby(entity, radius)
+    collider.nearby(entity, radius + entity.radius)
   end
 
   def ships_in_range(entity, radius)
@@ -121,14 +120,8 @@ class Map
   end
 
   cache def planetary_defense
-    enemy_defenses = ships.reject {|ship| ship.owner == me || ship.docked? }
-
-
     planets.map do |planet|
-      # number of enemy ships in area
-      defense = enemy_defenses.count do |enemy_ship|
-        planet.squared_distance_to(enemy_ship) <= (planet.radius + 5 + 4) ** 2
-      end
+      defense = enemy_ships_in_range(planet, Game::Constants::MAX_SPEED * 4).reject(&:docked?).size
 
       [planet, defense]
     end.to_h
@@ -158,9 +151,12 @@ class Map
     planets - my_planets
   end
 
-  def target_planets_by_weight(entity, distance: 1, defense: 1)
+  def target_planets_by_weight(entity, distance: 1, defense: 1, docked: 1, slots: 1)
     enemy_planets.sort_by do |planet|
-      entity.calculate_distance_between(planet) * distance * 0.05 + planet.docked_ships.size * defense
+      (entity.calculate_distance_between(planet) * distance * 0.05) +
+      (planet.docked_ships.size * docked) +
+      (planetary_defense[planet] * defense) +
+      ([nil, me].include?(planet.owner) ? (planet.docking_spots - planet.docked_ships.size) * slots : 0)
     end
   end
 

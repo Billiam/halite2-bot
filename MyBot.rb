@@ -31,7 +31,8 @@ LOGGER = game.logger
 # TODO: extract:
 # Commander
 # Strategies
-expected = {}
+
+# expected = {}
 
 speed = Game::Constants::MAX_SPEED
 assignments = {}
@@ -183,7 +184,7 @@ while true
 
     # Conquer
     unless ship_command
-      ship_command = map.target_planets_by_weight(ship, distance: 1, defense: -1.5).lazy.map do |planet|
+      ship_command = map.target_planets_by_weight(ship, distance: 1, docked: -1.5, defense: 2, slots: -2).lazy.map do |planet|
         if planet.owned?
           next map.sort_closest(ship, planet.docked_ships).lazy.map do |target_ship|
             attack_point = ship.approach_closest_point(target_ship, Game::Constants::WEAPON_RADIUS + attack_fudge)
