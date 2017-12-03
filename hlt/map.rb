@@ -153,10 +153,12 @@ class Map
 
   def target_planets_by_weight(entity, distance: 1, defense: 1, docked: 1, slots: 1)
     enemy_planets.sort_by do |planet|
-      (entity.calculate_distance_between(planet) * distance * 0.05) +
-      (planet.docked_ships.size * docked) +
-      (planetary_defense[planet] * defense) +
-      ([nil, me].include?(planet.owner) ? (planet.docking_spots - planet.docked_ships.size) * slots : 0)
+      [
+        (entity.calculate_distance_between(planet) * distance * 0.05) +
+        (planet.docked_ships.size * docked) +
+        (planetary_defense[planet] * defense) +
+        ([nil, me].include?(planet.owner) ? (planet.docking_spots - planet.docked_ships.size) * slots : 0),
+        -entity.id]
     end
   end
 
