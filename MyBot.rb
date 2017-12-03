@@ -48,15 +48,16 @@ while true
   # end of the turn
   command_queue = []
 
-  # update assignments
-  assignments = assignments.select { |ship_id, player_id| map.ship(ship_id) && map.player_active?(map.player(player_id)) }
+  # remove exploded ships
+  assignments = assignments.select { |ship_id, _tagret| map.ship(ship_id)  }
 
   active_enemies = map.active_enemies
   active_enemy_ids = active_enemies.map(&:id)
 
+  # Assignment culling
   # Remove inactive enemies from assignments
-  assignments.keep_if do |_ship_id, enemy_id|
-    active_enemy_ids.include?(enemy_id)
+  assignments.delete_if do |_ship_id, (type, target)|
+    type == :owner &&  !active_enemy_ids.include?(target)
   end
 
   max_assignments = [Math.log(map.me.ships.size, 2.4).floor, active_enemies.size].min
@@ -65,12 +66,13 @@ while true
     available_ships = map.me.ships.reject(&:docked?).reject {|ship| assignments.key?(ship.id) }
     available_ships.each do |ship|
       target = map.enemy_ships_in_range(ship, Game::Constants::MAX_SPEED * 9).find do |nearby_ship|
-        next if assignments.value?(nearby_ship.owner.id)
+        next if assignments.value?([:owner, nearby_ship.owner.id])
 
         true
       end
       next unless target
-      assignments[ship.id] = target.owner.id
+      assignments[ship.id] = [:owner, target.owner.id]
+
       break if assignments.size >= max_assignments
     end
   else
@@ -135,8 +137,8 @@ while true
 
     # Task Assignment
     unless ship_command
-      enemy_target_id = assignments[ship.id]
-      if enemy_target_id
+      type, enemy_target_id = assignments[ship.id]
+      if enemy_target_id && type == :owner
         enemy_target = map.player(enemy_target_id)
 
         closest_enemy_ships = nearby_entities & enemy_target.ships
