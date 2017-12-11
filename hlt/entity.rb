@@ -57,7 +57,7 @@ class Entity
   end
 
   def approach_attack(target)
-    if target.health >= health + 128
+    if !target.docked? && target.health >= health + 128
       return target
     end
 
