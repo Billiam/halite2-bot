@@ -82,7 +82,7 @@ class Ship < Entity
   # planet: the Planet you are attempting to dock at
   # return: true if can dock, false if no
   def can_dock?(planet)
-    squared_distance_to(planet) <= (planet.radius + Game::Constants::DOCK_RADIUS + Game::Constants::SHIP_RADIUS) ** 2
+    squared_distance_to(planet) <= (planet.radius + Game::Constants::DOCK_RADIUS + Game::Constants::SHIP_RADIUS) ** 2 && ! planet.full?
   end
 
   def can_attack?(ship)
@@ -135,7 +135,9 @@ class Ship < Entity
     ignore << :my_ships if ignore_my_ships
 
     if avoid_obstacles && map.any_obstacles_between?(self, target, ignore)
-      delta_radians = (angle + angular_step)/180 * Math::PI
+      angle_addition = (angular_step.even? ? -0.5 : 0.5) * ( angular_step ** 2 )
+
+      delta_radians = (angle + angle_addition)/180 * Math::PI
       new_target_dx = Math.cos(delta_radians) * distance
       new_target_dy = Math.sin(delta_radians) * distance
       new_target = Position.new(x + new_target_dx, y + new_target_dy)
@@ -146,7 +148,7 @@ class Ship < Entity
         speed,
         avoid_obstacles: true,
         max_corrections: max_corrections-1,
-        angular_step: angular_step + 0.5,
+        angular_step: angular_step + 1,
         ignore_ships: ignore_ships,
         ignore_planets: ignore_planets,
         ignore_my_ships: ignore_my_ships,
