@@ -65,8 +65,12 @@ class Map
     players.flat_map(&:ships)
   end
 
-  def ship(ship_id)
-    players.lazy.flat_map(&:ships).find {|ship| ship.id == ship_id }
+  cache def ship_ids
+    ships.map {|ship| [ship.id, ship]}.to_h
+  end
+
+  def ship(id)
+    ship_ids[id]
   end
 
   def update(input)
@@ -113,7 +117,7 @@ class Map
     end
   end
 
-  def enemy_ships_in_range(entity, radius)
+  cache def enemy_ships_in_range(entity, radius)
     ships_in_range(entity, radius).reject do |nearby_entity|
       nearby_entity.owner == me
     end
@@ -151,18 +155,7 @@ class Map
     planets - my_planets
   end
 
-  def target_planets_by_weight(entity, distance: 1, defense: 1, docked: 1, slots: 1)
-    enemy_planets.sort_by do |planet|
-      [
-        (entity.calculate_distance_between(planet) * distance * 0.05) +
-        (planet.docked_ships.size * docked) +
-        (planetary_defense[planet] * defense) +
-        ([nil, me].include?(planet.owner) ? (planet.docking_spots - planet.docked_ships.size) * slots : 0),
-        -entity.id]
-    end
-  end
-
-  def entities_sorted_by_distance(entity)
+  cache def entities_sorted_by_distance(entity)
     sort_closest(entity, (ships + planets).reject { |foreign_entity| entity == foreign_entity })
   end
 
