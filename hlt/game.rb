@@ -59,7 +59,7 @@ class Game
   end
 
   def send_command_queue(commands)
-    write_to_output(commands.join(' '))
+    write_to_output(commands.reject {|command| command == :skip}.join(' '))
   end
 
   private
