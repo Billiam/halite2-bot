@@ -8,8 +8,10 @@ module Cache
 
     define_method(name) do |*args|
       @_cache ||= {}
-      return @_cache[name] if @_cache.has_key?(name)
-      @_cache[name] = fn.bind(self).call(*args)
+      return @_cache[name][args] if @_cache.has_key?(name) && @_cache[name].has_key?(args)
+
+      @_cache[name] ||= {}
+      @_cache[name][args] = fn.bind(self).call(*args)
     end
 
     name
