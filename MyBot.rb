@@ -30,12 +30,13 @@ LOGGER = game.logger
 
 ## Assignments
 require 'assigner'
-Assigner::Assigner.register(Assigner::Stalker)
 Assigner::Assigner.register(Assigner::Settler)
 Assigner::Assigner.register(Assigner::Conqueror)
 Assigner::Assigner.register(Assigner::Assaulter)
 
 assigner = Assigner::Assigner.new(game.map)
+
+Assigner::Assigner.register(Assigner::Stalker, prepend: true) if game.map.players.size == 2
 
 while true
   # TURN START

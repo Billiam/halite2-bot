@@ -1,8 +1,13 @@
 class Assigner::Assigner
   class << self
     attr_reader :command_types
-    def register(type)
-      self.command_types << type
+    
+    def register(type, prepend: false)
+      if prepend
+        self.command_types.unshift(type)
+      else
+        self.command_types << type
+      end
     end
 
     def command_types
